@@ -1,3 +1,6 @@
+#[cfg(not(any(target_pointer_width = "32", target_pointer_width = "64")))]
+compile_error!("Unsupported pointer width");
+
 pub use goblin;
 
 mod util;
@@ -5,8 +8,13 @@ mod util;
 mod embed;
 pub use embed::Embedder;
 
-pub mod read;
-pub mod write;
+mod read;
+mod write;
+pub use read::*;
+pub use write::BinaryEmbeddable;
+
+#[cfg(test)]
+mod tests;
 
 pub const LINK_SECTION: &'static [u8] = b".lnkstre";
 
@@ -27,8 +35,17 @@ pub enum Error {
 	#[error("Unknown binary format")]
 	Unrecognised,
 
-	#[error("Format of .lnkstore section is corrupt or unsupported")]
+	#[error("Format of .lnkstore section is corrupt, unsupported or a bug may be present")]
 	DecodingError,
+
+	#[error("Format of .lnkstore section is corrupt, unsupported or a bug may be present")]
+	NameDecodingError,
+
+	#[error("Format of .lnkstore section is corrupt, unsupported or a bug may be present (expected {0}, got {1} for magic marker)")]
+	MagicDecodingError(u8, u8),
+
+	#[error("Format of .lnkstore section is corrupt, unsupported or a bug may be present (unexpected EOF)")]
+	UnexpectedEof,
 
 	#[error("I/O error: {0}")]
 	IoError(#[from] std::io::Error)
@@ -46,65 +63,72 @@ pub fn open_binary<P: AsRef<std::path::Path>>(path: P) -> Result<std::fs::File, 
 		.open(path)?)
 }
 
+#[doc(hidden)]
+pub const MAGIC: u8 = 234;
+
 #[macro_export]
 macro_rules! linkstore {
 	{$($vis:vis static $name:ident: $ty:ty = $init:expr;)+} => {$(
 		#[allow(non_snake_case)]
 		$vis mod $name {
-			use core::mem::size_of;
+			use core::mem::{size_of, align_of};
 
 			const NAME_LEN: usize = stringify!($name).len();
 
 			#[repr(C)]
-			struct AlignedLinkStore($ty);
-
-			#[repr(C, packed)]
-			struct LinkStoreContainer {
-				name: [u8; NAME_LEN + 1],
+			struct LinkStoreContainer<T: $crate::BinaryEmbeddable> {
+				name: [u8; NAME_LEN + 1 + 1],
 				size: [u8; size_of::<usize>()],
 				padding: [u8; size_of::<usize>()],
-				value: AlignedLinkStore,
+				value: $crate::VolatileWrapper<T>
 			}
 
 			#[link_section = ".lnkstre"]
 			#[used]
-			static $name: LinkStoreContainer = LinkStoreContainer {
+			static $name: LinkStoreContainer<$ty> = LinkStoreContainer {
 				name: {
-					let mut static_bytes = [0u8; NAME_LEN + 1];
+					let mut static_bytes = [0u8; NAME_LEN + 1 + 1];
+					static_bytes[0] = $crate::MAGIC;
+
 					let bytes = stringify!($name).as_bytes();
 					let mut i = 0;
 					while i < NAME_LEN {
-						static_bytes[i] = bytes[i];
+						static_bytes[i + 1] = bytes[i];
 						i += 1;
 					}
+
 					static_bytes
 				},
 
-				size: (size_of::<$ty>()).to_le_bytes(),
-				padding: (size_of::<LinkStoreContainer>() - (size_of::<usize>() * 2) - (NAME_LEN + 1) - size_of::<$ty>()).to_le_bytes(),
-				value: AlignedLinkStore($init)
+				size: size_of::<$ty>().to_le_bytes(),
+				padding: (size_of::<LinkStoreContainer<$ty>>() - (NAME_LEN + 1 + 1) - (size_of::<usize>() * 2) - size_of::<$ty>()).to_le_bytes(),
+
+				value: $crate::VolatileWrapper::new($init)
 			};
 
 			pub fn get() -> &'static $ty {
-				&$name.value.0
+				debug_assert_eq!(std::mem::align_of::<LinkStoreContainer<$ty>>(), align_of::<$ty>(), "Alignment error");
+				$name.value.get()
 			}
 		}
 	)+};
 }
 
-linkstore! {
-	pub static LOLOLO: u64 = 0xDEADBEEF;
-	pub static LOLOLO2: u64 = 0xDEADBEEF;
-}
+#[doc(hidden)]
+#[repr(transparent)]
+pub struct VolatileWrapper<T>(core::cell::UnsafeCell<T>);
+impl<T> VolatileWrapper<T> {
+	#[doc(hidden)]
+	pub const fn new(val: T) -> Self {
+		Self(core::cell::UnsafeCell::new(val))
+	}
 
-#[no_mangle]
-pub extern "C" fn gmod13_open(_ptr: usize) -> i32 {
-	println!("{}", LOLOLO::get());
-	println!("{}", LOLOLO2::get());
-	0
+	#[doc(hidden)]
+	pub fn get(&'static self) -> &'static T {
+		unsafe {
+			std::mem::forget(std::ptr::read_volatile(self.0.get()));
+			&*self.0.get()
+		}
+	}
 }
-
-fn main() {
-	println!("{}", LOLOLO::get());
-	println!("{}", LOLOLO2::get());
-}
+unsafe impl<T> Sync for VolatileWrapper<T> {}

@@ -1,12 +1,33 @@
-use std::{io::{Write, BufRead, BufReader, Seek, SeekFrom, Read, Cursor}, collections::{hash_map::Entry, HashMap}, borrow::Cow};
-use crate::{write::*, read::*, Error, util::{MaybeScalar, MaybeOwnedBytes}};
+use std::{io::{Write, BufReader, Seek, SeekFrom, Read, Cursor, BufRead}, collections::{HashMap, hash_map::Entry}, borrow::Cow};
+use crate::{write::*, Error, util::{MaybeScalar, MaybeOwnedBytes}};
 
-type Embeds<'a> = HashMap<String, MaybeScalar<PendingEmbed<'a>>>;
+pub(crate) type Embeds<'a> = HashMap<String, MaybeScalar<PendingEmbed<'a>>>;
 
 mod ar;
-mod elf;
-mod macho;
 mod pe;
+mod elf;
+mod coff;
+mod macho;
+
+fn discover_linkstores_impl<'a>(bytes: &'a [u8], object: &'a goblin::Object, handle: &mut BufReader<Cursor<&[u8]>>, embeds: &mut Embeds, ar_offset: u64) -> Result<(), Error> {
+	match object {
+		goblin::Object::Elf(elf) => elf::discover_linkstores(embeds, handle, elf, ar_offset),
+		goblin::Object::PE(pe) => pe::discover_linkstores(embeds, handle, pe, ar_offset),
+		goblin::Object::Archive(ar) => ar::discover_linkstores(embeds, handle, ar, ar_offset),
+
+		goblin::Object::Mach(goblin::mach::Mach::Binary(macho)) => macho::discover_linkstores(embeds, handle, macho, ar_offset),
+		goblin::Object::Mach(goblin::mach::Mach::Fat(fat)) => macho::discover_linkstores_multiarch(embeds, handle, fat),
+
+		goblin::Object::Unknown(_) => {
+			if ar_offset != 0 {
+				if let Ok(coff) = goblin::pe::Coff::parse(bytes) {
+					return coff::discover_linkstores(embeds, handle, &coff, ar_offset);
+				}
+			}
+			Err(Error::Unrecognised)
+		}
+	}
+}
 
 fn filter_map_linkstore_section<'a, T>(name: &'a [u8], section: &'a T) -> Option<&'a T> {
 	if name.starts_with(super::LINK_SECTION) {
@@ -34,27 +55,17 @@ impl From<Vec<u8>> for EmbeddableBytes<'_> {
 		EmbeddableBytes::Large(Cow::Owned(bytes))
 	}
 }
-macro_rules! embeddable_bytes {
-	($($n:literal),+) => {$(
-		impl From<[u8; $n]> for EmbeddableBytes<'_> {
-			fn from(from: [u8; $n]) -> Self {
-				let mut bytes = [0u8; 16];
-				bytes[0..$n].copy_from_slice(&from);
-
-				EmbeddableBytes::Small { size: $n, bytes }
-			}
+impl<const N: usize> From<[u8; N]> for EmbeddableBytes<'_> {
+	fn from(from: [u8; N]) -> Self {
+		if N > 16 {
+			EmbeddableBytes::Large(Cow::Owned(from.to_vec()))
+		} else {
+			let mut bytes = [0u8; 16];
+			bytes[0..N].copy_from_slice(&from);
+			EmbeddableBytes::Small { size: N as u8, bytes }
 		}
-		impl BinaryEmbeddable for [u8; $n] {
-			fn as_le_bytes<'a>(&'a self) -> EmbeddableBytes {
-				let mut bytes = [0u8; 16];
-				bytes[0..$n].copy_from_slice(self);
-
-				EmbeddableBytes::Small { size: $n, bytes }
-			}
-		}
-	)+}
+	}
 }
-embeddable_bytes!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
 
 #[derive(Debug)]
 pub(crate) enum EmbeddedBytes<'a> {
@@ -145,7 +156,7 @@ pub struct OwnedObject<'a> {
 #[must_use]
 pub struct Embedder<'a> {
 	object: OwnedObject<'a>,
-	embeds: Embeds<'a>
+	pub(crate) embeds: Embeds<'a>
 }
 impl<'a> Embedder<'a> {
 	pub fn new<H: Into<BinaryHandle<'a>>>(handle: H) -> Result<Embedder<'a>, Error> {
@@ -197,15 +208,13 @@ impl<'a> Embedder<'a> {
 
 		let mut handle = BufReader::with_capacity(256, Cursor::new(bytes.as_ref()));
 
-		match object {
-			goblin::Object::Elf(elf) => elf::discover_linkstores(&mut self.embeds, &mut handle, elf, 0),
-			goblin::Object::PE(pe) => pe::discover_linkstores(&mut self.embeds, &mut handle, pe),
-			goblin::Object::Mach(goblin::mach::Mach::Binary(macho)) => macho::discover_linkstores(&mut self.embeds, &mut handle, macho, 0),
-			goblin::Object::Mach(goblin::mach::Mach::Fat(fat)) => macho::discover_linkstores_multiarch(&mut self.embeds, &mut handle, fat),
-			goblin::Object::Archive(ar) => ar::discover_linkstores(&mut self.embeds, &mut handle, ar),
-			goblin::Object::Unknown(_) => Err(Error::Unrecognised)
-		}
-
+		discover_linkstores_impl(
+			bytes.as_ref(),
+			object,
+			&mut handle,
+			&mut self.embeds,
+			0
+		)
 	}
 
 	fn decode_section(
@@ -214,66 +223,96 @@ impl<'a> Embedder<'a> {
 		is_64: bool, little_endian: bool,
 		fat_offset: u64
 	) -> Result<(), Error> {
-		let minimum_header_size = (if is_64 {
-			core::mem::size_of::<u64>()
-		} else {
-			core::mem::size_of::<u32>()
-		}) * 3;
+		use core::mem::size_of;
 
-		handle.seek(SeekFrom::Start(header_offset))?;
+		handle.seek(SeekFrom::Start(header_offset as _))?;
 
 		let mut header_size = header_size as usize;
-		while header_size > minimum_header_size {
-			let mut name = Vec::with_capacity(256);
-			handle.read_until(0, &mut name)?;
+		let minimum_header_size = 3 + ((if is_64 {
+			size_of::<u64>()
+		} else {
+			size_of::<u32>()
+		}));
 
-			if name[name.len() - 1] == 0 {
-				name.pop();
+		macro_rules! read_type {
+			($ty:ty) => {{
+				let mut buf = [0u8; size_of::<$ty>()];
+				handle.read_exact(&mut buf)?;
+				<$ty>::from_le_bytes(buf)
+			}}
+		}
+
+		macro_rules! move_header_cursor {
+			($amount:expr) => {
+				header_size = match header_size.checked_sub($amount) {
+					Some(header_size) => header_size,
+					None => return Err(Error::UnexpectedEof)
+				}
+			}
+		}
+
+		while header_size >= minimum_header_size {
+			match handle.read_until(crate::MAGIC, &mut Vec::new()).map_err(|err| (err.kind(), err)) {
+				Ok(n) => {
+					header_size = header_size.saturating_sub(n);
+					if header_size < minimum_header_size {
+						break;
+					}
+				},
+				Err((std::io::ErrorKind::UnexpectedEof, _)) => break,
+				Err((_, err)) => return Err(Error::IoError(err))
 			}
 
-			if name.is_empty() {
-				return Err(Error::DecodingError);
-			}
+			let name = {
+				let mut name = Vec::with_capacity(256);
+				move_header_cursor!(handle.read_until(0, &mut name)?);
 
-			header_size -= name.len() + 1;
+				if name.is_empty() {
+					return Err(Error::NameDecodingError);
+				}
 
-			let name = String::from_utf8_lossy(&name).into_owned();
-			let size = if is_64 {
-				let mut buf = [0u8; core::mem::size_of::<u64>()];
-				header_size -= buf.len();
-				handle.read_exact(&mut buf)?;
-				u64::from_le_bytes(buf)
-			} else {
-				let mut buf = [0u8; core::mem::size_of::<u32>()];
-				header_size -= buf.len();
-				handle.read_exact(&mut buf)?;
-				u32::from_le_bytes(buf) as u64
+				String::from_utf8_lossy(&name[0..name.len()-1]).into_owned()
 			};
 
-			let padding = if is_64 {
-				let mut buf = [0u8; core::mem::size_of::<u64>()];
-				header_size -= buf.len();
-				handle.read_exact(&mut buf)?;
-				u64::from_le_bytes(buf)
-			} else {
-				let mut buf = [0u8; core::mem::size_of::<u32>()];
-				header_size -= buf.len();
-				handle.read_exact(&mut buf)?;
-				u32::from_le_bytes(buf) as u64
+			let size = {
+				if is_64 {
+					move_header_cursor!(size_of::<u64>());
+					read_type!(u64)
+				} else {
+					move_header_cursor!(size_of::<u32>());
+					read_type!(u32) as u64
+				}
 			};
 
-			header_size -= (size + padding) as usize;
+			let padding = {
+				if is_64 {
+					move_header_cursor!(size_of::<u64>());
+					read_type!(u64)
+				} else {
+					move_header_cursor!(size_of::<u32>());
+					read_type!(u32) as u64
+				}
+			};
 
-			let offset = handle.seek(SeekFrom::Current(padding as _))?;
+			move_header_cursor!(padding as usize);
+			move_header_cursor!(size as usize);
 
-			let bytes = if size > 16 {
-				let mut bytes = vec![0u8; size as usize];
-				handle.read_exact(&mut bytes)?;
-				EmbeddableBytes::Large(bytes.into())
-			} else {
-				let mut bytes = [0u8; 16];
-				handle.read_exact(&mut bytes[..size as usize])?;
-				EmbeddableBytes::Small { size: size as u8, bytes }
+			handle.seek(SeekFrom::Current(padding as _))?;
+
+			let (offset, bytes) = {
+				let offset = handle.seek(SeekFrom::Current(0))?;
+
+				let bytes = if size > 16 {
+					let mut bytes = vec![0u8; size as usize];
+					handle.read_exact(&mut bytes)?;
+					EmbeddableBytes::Large(bytes.into())
+				} else {
+					let mut bytes = [0u8; 16];
+					handle.read_exact(&mut bytes[..size as usize])?;
+					EmbeddableBytes::Small { size: size as u8, bytes }
+				};
+
+				(offset, bytes)
 			};
 
 			let embed = PendingEmbed {
@@ -292,32 +331,6 @@ impl<'a> Embedder<'a> {
 		Ok(())
 	}
 
-	pub fn embed<T: BinaryEmbeddable>(&mut self, name: &'a str, value: &'a T) -> Result<&mut Self, Error> {
-		let embeds = self.embeds.get_mut(name).ok_or_else(|| Error::NotPresent(name.to_string()))?;
-
-		for embed in embeds.as_mut() {
-			if embed.size != core::mem::size_of::<T>() as u64 {
-				return Err(Error::MismatchedSize(embed.size, core::mem::size_of::<T>()));
-			}
-
-			embed.bytes = EmbeddedBytes::Set(if embed.little_endian {
-				value.as_le_bytes()
-			} else {
-				value.as_be_bytes()
-			});
-		}
-
-		Ok(self)
-	}
-
-	pub fn try_read<T: BinaryEmbeddable + TryDecodeBinaryEmbeddable>(&mut self, name: &str) -> Result<TryEmbeddedValueIterator<'_, T>, Error> {
-		Ok(TryEmbeddedValueIterator::new(self.embeds.get(name).ok_or_else(|| Error::NotPresent(name.to_string()))?.as_ref()))
-	}
-
-	pub fn read<T: BinaryEmbeddable + DecodeBinaryEmbeddable>(&mut self, name: &str) -> Result<EmbeddedValueIterator<'_, T>, Error> {
-		Ok(EmbeddedValueIterator::new(self.embeds.get(name).ok_or_else(|| Error::NotPresent(name.to_string()))?.as_ref()))
-	}
-
 	pub fn finish(self) -> Result<(), Error> {
 		let mut handle = self.object.into_heads().handle;
 
@@ -332,15 +345,4 @@ impl<'a> Embedder<'a> {
 
 		Ok(())
 	}
-}
-
-#[test]
-fn dump_linkstore() {
-	let mut binary = crate::open_binary("target/debug/liblinkstore.a").unwrap();
-	let mut embedder = Embedder::new(&mut binary).unwrap();
-	println!("{:?}", embedder.read::<u64>("LOLOLO").unwrap().next());
-	println!("{:?}", embedder.read::<u64>("LOLOLO2").unwrap().next());
-	embedder.embed("LOLOLO", &69_u64).unwrap();
-	embedder.embed("LOLOLO2", &420_u64).unwrap();
-	embedder.finish().unwrap();
 }

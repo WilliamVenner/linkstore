@@ -4,15 +4,19 @@ version = "0.1.0"
 edition = "2021"
 authors = ["William Venner <william@venner.io>"]
 
-[lib]
-crate-type = ["cdylib", "staticlib"]
+[profile.linkstore-test-release]
+inherits = "release"
+lto = true
+debug = false
+opt-level = "s"
 
-[[bin]]
-name = "sneed"
-path = "src/lib.rs"
+[workspace]
+members = ["tests"]
 
 [dependencies]
 goblin = "0"
 thiserror = "1"
-rustc-demangle = "0"
 ouroboros = "0"
+
+[dev-dependencies]
+libloading = "0"

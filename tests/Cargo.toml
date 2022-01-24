@@ -1,0 +1,28 @@
+[package]
+name = "linkstore_tests"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[[example]]
+name = "linkstore_tests_cdylib"
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[[example]]
+name = "linkstore_tests_staticlib"
+crate-type = ["staticlib"]
+path = "src/lib.rs"
+
+[[example]]
+name = "linkstore_tests_dylib"
+crate-type = ["dylib"]
+path = "src/lib.rs"
+
+[[example]]
+name = "linkstore_tests_bin"
+crate-type = ["bin"]
+path = "src/bin.rs"
+
+[dependencies]
+linkstore = { path = "../" }
