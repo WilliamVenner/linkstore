@@ -50,3 +50,11 @@ fn main() {
     embedder.finish().unwrap();
 }
 ```
+
+# TODO
+
+* MacOS binaries support
+* MacO + fat binaries support
+* String/Vec serialization/deserialization (if possible)
+* Documentation
+* Refactor and clean up code
