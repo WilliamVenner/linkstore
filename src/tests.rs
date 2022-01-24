@@ -53,6 +53,9 @@ fn second_pass(embedder: &mut Embedder) {
 }
 
 fn test_executable(path: &str, lib: bool, open: bool) {
+	#[cfg(target_os = "linux")]
+	assert!(Command::new("strip").arg(path).status().unwrap().success());
+
 	{
 		let mut binary = crate::open_binary(path).unwrap();
 		let mut embedder = Embedder::new(&mut binary).unwrap();
