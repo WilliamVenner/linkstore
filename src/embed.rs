@@ -37,40 +37,10 @@ fn filter_map_linkstore_section<'a, T>(name: &'a [u8], section: &'a T) -> Option
 	}
 }
 
-#[derive(Debug, Clone)]
-pub enum EmbeddableBytes<'a> {
-	Small { size: u8, bytes: [u8; 16] },
-	Large(Cow<'a, [u8]>)
-}
-impl AsRef<[u8]> for EmbeddableBytes<'_> {
-	fn as_ref(&self) -> &[u8] {
-		match self {
-			Self::Small { size, bytes } => &bytes[0..*size as usize],
-			Self::Large(bytes) => bytes.as_ref()
-		}
-	}
-}
-impl From<Vec<u8>> for EmbeddableBytes<'_> {
-	fn from(bytes: Vec<u8>) -> Self {
-		EmbeddableBytes::Large(Cow::Owned(bytes))
-	}
-}
-impl<const N: usize> From<[u8; N]> for EmbeddableBytes<'_> {
-	fn from(from: [u8; N]) -> Self {
-		if N > 16 {
-			EmbeddableBytes::Large(Cow::Owned(from.to_vec()))
-		} else {
-			let mut bytes = [0u8; 16];
-			bytes[0..N].copy_from_slice(&from);
-			EmbeddableBytes::Small { size: N as u8, bytes }
-		}
-	}
-}
-
 #[derive(Debug)]
 pub(crate) enum EmbeddedBytes<'a> {
-	Unchanged(EmbeddableBytes<'a>),
-	Set(EmbeddableBytes<'a>),
+	Unchanged(Cow<'a, [u8]>),
+	Set(Cow<'a, [u8]>),
 }
 impl AsRef<[u8]> for EmbeddedBytes<'_> {
 	#[inline(always)]
@@ -302,14 +272,10 @@ impl<'a> Embedder<'a> {
 			let (offset, bytes) = {
 				let offset = handle.seek(SeekFrom::Current(0))?;
 
-				let bytes = if size > 16 {
+				let bytes = {
 					let mut bytes = vec![0u8; size as usize];
 					handle.read_exact(&mut bytes)?;
-					EmbeddableBytes::Large(bytes.into())
-				} else {
-					let mut bytes = [0u8; 16];
-					handle.read_exact(&mut bytes[..size as usize])?;
-					EmbeddableBytes::Small { size: size as u8, bytes }
+					bytes.into()
 				};
 
 				(offset, bytes)

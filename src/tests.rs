@@ -38,10 +38,12 @@ fn first_pass(embedder: &mut Embedder) {
 	assert_eq!(embedder.read::<u64>("LINKSTORE_TEST").unwrap().next(), Some(0xDEADBEEF_u64));
 	assert_eq!(embedder.read::<u32>("LINKSTORE_YEAH").unwrap().next(), Some(0xDEADBEEF_u32));
 	assert!(matches!(embedder.try_read::<[u8; 4]>("LINKSTORE_BYTES").unwrap().next(), Some(Ok([0xDE, 0xAD, 0xBE, 0xEF]))));
+	assert!(matches!(embedder.try_read::<[u16; 4]>("LINKSTORE_SHORTS").unwrap().next(), Some(Ok([0xDE, 0xAD, 0xBE, 0xEF]))));
 	assert_eq!(embedder.read::<u128>("LINKSTORE_BIG").unwrap().next(), Some(0xDEADBEEF_u128));
 	embedder.embed("LINKSTORE_TEST", &69_u64).unwrap();
 	embedder.embed("LINKSTORE_YEAH", &420_u32).unwrap();
-	embedder.embed("LINKSTORE_BYTES", &[1, 2, 3, 4]).unwrap();
+	embedder.embed("LINKSTORE_BYTES", &[1_u8, 2, 3, 4]).unwrap();
+	embedder.embed("LINKSTORE_SHORTS", &[1_u16, 2, 3, 4]).unwrap();
 	embedder.embed("LINKSTORE_BIG", &(u128::MAX / 2)).unwrap();
 }
 
@@ -49,6 +51,7 @@ fn second_pass(embedder: &mut Embedder) {
 	assert_eq!(embedder.read::<u64>("LINKSTORE_TEST").unwrap().next(), Some(69_u64));
 	assert_eq!(embedder.read::<u32>("LINKSTORE_YEAH").unwrap().next(), Some(420_u32));
 	assert!(matches!(embedder.try_read::<[u8; 4]>("LINKSTORE_BYTES").unwrap().next(), Some(Ok([1, 2, 3, 4]))));
+	assert!(matches!(embedder.try_read::<[u16; 4]>("LINKSTORE_SHORTS").unwrap().next(), Some(Ok([1, 2, 3, 4]))));
 	assert_eq!(embedder.read::<u128>("LINKSTORE_BIG").unwrap().next(), Some(u128::MAX / 2));
 }
 

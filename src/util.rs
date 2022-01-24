@@ -4,12 +4,12 @@ pub(crate) enum MaybeOwnedBytes<'a> {
 }
 impl AsRef<[u8]> for MaybeOwnedBytes<'_> {
 	#[inline(always)]
-    fn as_ref(&self) -> &[u8] {
-        match self {
+	fn as_ref(&self) -> &[u8] {
+		match self {
 			Self::Borrowed(bytes) => bytes,
 			Self::Owned(owned) => owned
 		}
-    }
+	}
 }
 
 pub(crate) enum MaybeScalar<T> {
@@ -29,9 +29,9 @@ impl<T> MaybeScalar<T> {
 	}
 }
 impl<T> Default for MaybeScalar<T> {
-    fn default() -> Self {
-        Self::Vec(Vec::new())
-    }
+	fn default() -> Self {
+		Self::Vec(Vec::new())
+	}
 }
 impl<T> From<T> for MaybeScalar<T> {
 	#[inline(always)]

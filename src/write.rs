@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use crate::{embed::{EmbeddableBytes, EmbeddedBytes}, Embedder, Error};
+use crate::{embed::EmbeddedBytes, Embedder, Error};
 
 impl<'a> Embedder<'a> {
 	pub fn embed<T: BinaryEmbeddable>(&mut self, name: &'a str, value: &'a T) -> Result<&mut Self, Error> {
@@ -30,60 +30,74 @@ pub(crate) struct PendingEmbed<'a> {
 }
 
 pub trait BinaryEmbeddable {
-	fn as_le_bytes<'a>(&'a self) -> EmbeddableBytes;
-	fn as_be_bytes<'a>(&'a self) -> EmbeddableBytes {
+	fn as_le_bytes<'a>(&'a self) -> Cow<'a, [u8]>;
+	fn as_be_bytes<'a>(&'a self) -> Cow<'a, [u8]> {
 		self.as_le_bytes()
 	}
 }
 
 impl BinaryEmbeddable for bool {
-	fn as_le_bytes<'a>(&'a self) -> EmbeddableBytes {
-		EmbeddableBytes::Small { size: 1, bytes: [*self as u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }
-	}
-}
-
-impl BinaryEmbeddable for Vec<u8> {
-	fn as_le_bytes<'a>(&'a self) -> EmbeddableBytes {
-		EmbeddableBytes::Large(Cow::Borrowed(self))
-	}
-}
-
-impl BinaryEmbeddable for String {
-	fn as_le_bytes<'a>(&'a self) -> EmbeddableBytes {
-		EmbeddableBytes::Large(Cow::Borrowed(self.as_bytes()))
-	}
-}
-
-impl<const N: usize> BinaryEmbeddable for [u8; N] {
-	fn as_le_bytes<'a>(&'a self) -> EmbeddableBytes {
-		if N > 16 {
-			EmbeddableBytes::Large(Cow::Borrowed(self))
+	fn as_le_bytes<'a>(&'a self) -> Cow<'a, [u8]> {
+		if *self {
+			Cow::Borrowed(&[1])
 		} else {
-			let mut bytes = [0u8; 16];
-			bytes[0..N].copy_from_slice(self);
-			EmbeddableBytes::Small { size: N as u8, bytes }
+			Cow::Borrowed(&[0])
 		}
 	}
 }
 
+impl BinaryEmbeddable for String {
+	fn as_le_bytes<'a>(&'a self) -> Cow<'a, [u8]> {
+		Cow::Borrowed(self.as_bytes())
+	}
+}
+
+impl<T: BinaryEmbeddable> BinaryEmbeddable for Vec<T> {
+	fn as_le_bytes<'a>(&'a self) -> Cow<'a, [u8]> {
+		let mut bytes = Vec::with_capacity(core::mem::size_of::<T>() * self.len());
+		for elem in self {
+			bytes.extend_from_slice(elem.as_le_bytes().as_ref());
+		}
+		Cow::Owned(bytes)
+	}
+}
+
+impl<T: BinaryEmbeddable, const N: usize> BinaryEmbeddable for [T; N] {
+	fn as_le_bytes<'a>(&'a self) -> Cow<'a, [u8]> {
+		let mut bytes = Vec::with_capacity(self.len() * core::mem::size_of::<T>());
+		for elem in self {
+			bytes.extend_from_slice(elem.as_le_bytes().as_ref());
+		}
+		Cow::Owned(bytes)
+	}
+
+	fn as_be_bytes<'a>(&'a self) -> Cow<'a, [u8]> {
+		let mut bytes = Vec::with_capacity(self.len() * core::mem::size_of::<T>());
+		for elem in self {
+			bytes.extend_from_slice(elem.as_be_bytes().as_ref());
+		}
+		Cow::Owned(bytes)
+	}
+}
+
 impl BinaryEmbeddable for [u8] {
-	fn as_le_bytes<'a>(&'a self) -> EmbeddableBytes {
-		EmbeddableBytes::Large(Cow::Borrowed(self))
+	fn as_le_bytes<'a>(&'a self) -> Cow<'a, [u8]> {
+		Cow::Borrowed(self)
 	}
 }
 impl BinaryEmbeddable for str {
-	fn as_le_bytes<'a>(&'a self) -> EmbeddableBytes {
-		EmbeddableBytes::Large(Cow::Borrowed(self.as_bytes()))
+	fn as_le_bytes<'a>(&'a self) -> Cow<'a, [u8]> {
+		Cow::Borrowed(self.as_bytes())
 	}
 }
 macro_rules! impl_numbers {
 	($($ty:ty),+) => {$(
 		impl BinaryEmbeddable for $ty {
-			fn as_le_bytes<'a>(&'a self) -> EmbeddableBytes {
-				self.to_le_bytes().into()
+			fn as_le_bytes<'a>(&'a self) -> Cow<'a, [u8]> {
+				self.to_le_bytes().to_vec().into()
 			}
-			fn as_be_bytes<'a>(&'a self) -> EmbeddableBytes {
-				self.to_be_bytes().into()
+			fn as_be_bytes<'a>(&'a self) -> Cow<'a, [u8]> {
+				self.to_be_bytes().to_vec().into()
 			}
 		}
 	)+}

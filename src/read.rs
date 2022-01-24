@@ -1,4 +1,5 @@
 use core::marker::PhantomData;
+use std::mem::MaybeUninit;
 use crate::{write::{PendingEmbed, BinaryEmbeddable}, Embedder, Error};
 
 impl<'a> Embedder<'a> {
@@ -46,22 +47,54 @@ macro_rules! infallible_decode {
 	};
 }
 
-impl<const N: usize> TryDecodeBinaryEmbeddable for [u8; N] {
-	type Error = std::array::TryFromSliceError;
+#[derive(thiserror::Error)]
+pub enum TryDecodeBinaryEmbeddableArrayError<E> {
+	#[error("array had {0} elements, expected {1}")]
+	MismatchedElementCount(usize, usize),
+
+	#[error("{0} bytes cannot be decoded into elements consisting of {1} bytes each")]
+	MismatchedBytesCount(usize, usize),
+
+	#[error("{0}")]
+	Other(#[from] E)
+}
+impl<T: TryDecodeBinaryEmbeddable, const N: usize> TryDecodeBinaryEmbeddable for [T; N] {
+	type Error = TryDecodeBinaryEmbeddableArrayError<<T as TryDecodeBinaryEmbeddable>::Error>;
 
 	fn try_from_le_bytes(bytes: &[u8]) -> Result<Self, Self::Error> {
-		bytes.try_into()
+		if bytes.len() % core::mem::size_of::<T>() != 0 {
+			return Err(TryDecodeBinaryEmbeddableArrayError::MismatchedBytesCount(bytes.len(), core::mem::size_of::<T>()));
+		}
+		if bytes.len() < N * core::mem::size_of::<T>() {
+			return Err(TryDecodeBinaryEmbeddableArrayError::MismatchedElementCount(bytes.len() / core::mem::size_of::<T>(), N));
+		}
+
+		let mut result = unsafe { MaybeUninit::<[MaybeUninit<T>; N]>::uninit().assume_init() };
+		for (i, chunk) in bytes.chunks(core::mem::size_of::<T>()).enumerate() {
+			unsafe { *result[i].as_mut_ptr() = T::try_from_le_bytes(chunk)? };
+		}
+		Ok(result.map(|elem| unsafe { elem.assume_init() }))
+	}
+}
+impl<T: TryDecodeBinaryEmbeddable> TryDecodeBinaryEmbeddable for Vec<T> {
+	type Error = TryDecodeBinaryEmbeddableArrayError<<T as TryDecodeBinaryEmbeddable>::Error>;
+
+	fn try_from_le_bytes(bytes: &[u8]) -> Result<Self, Self::Error> {
+		if bytes.len() % core::mem::size_of::<T>() != 0 {
+			return Err(TryDecodeBinaryEmbeddableArrayError::MismatchedBytesCount(bytes.len(), core::mem::size_of::<T>()));
+		}
+
+		let mut result = Vec::with_capacity(bytes.len() / core::mem::size_of::<T>());
+		for chunk in bytes.chunks(core::mem::size_of::<T>()) {
+			result.push(T::try_from_le_bytes(chunk)?);
+		}
+		Ok(result)
 	}
 }
 
 infallible_decode!(impl DecodeBinaryEmbeddable for bool {
 	fn from_le_bytes(bytes: &[u8]) -> Self {
 		bytes[0] != 0
-	}
-});
-infallible_decode!(impl DecodeBinaryEmbeddable for Vec<u8> {
-	fn from_le_bytes(bytes: &[u8]) -> Self {
-		bytes.to_vec()
 	}
 });
 
