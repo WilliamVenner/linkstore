@@ -1,15 +1,29 @@
-use std::{io::{Write, BufReader, Seek, SeekFrom, Read, Cursor, BufRead}, collections::{HashMap, hash_map::Entry}, borrow::Cow};
-use crate::{write::*, Error, util::{MaybeScalar, MaybeOwnedBytes}};
+use crate::{
+	util::{MaybeOwnedBytes, MaybeScalar},
+	write::*,
+	Error,
+};
+use std::{
+	borrow::Cow,
+	collections::{hash_map::Entry, HashMap},
+	io::{BufRead, BufReader, Cursor, Read, Seek, SeekFrom, Write},
+};
 
 pub(crate) type Embeds<'a> = HashMap<String, MaybeScalar<PendingEmbed<'a>>>;
 
 mod ar;
-mod pe;
-mod elf;
 mod coff;
+mod elf;
 mod macho;
+mod pe;
 
-fn discover_linkstores_impl<'a>(bytes: &'a [u8], object: &'a goblin::Object, handle: &mut BufReader<Cursor<&[u8]>>, embeds: &mut Embeds, ar_offset: u64) -> Result<(), Error> {
+fn discover_linkstores_impl<'a>(
+	bytes: &'a [u8],
+	object: &'a goblin::Object,
+	handle: &mut BufReader<Cursor<&[u8]>>,
+	embeds: &mut Embeds,
+	ar_offset: u64,
+) -> Result<(), Error> {
 	match object {
 		goblin::Object::Elf(elf) => elf::discover_linkstores(embeds, handle, elf, ar_offset),
 		goblin::Object::PE(pe) => pe::discover_linkstores(embeds, handle, pe, ar_offset),
@@ -54,20 +68,18 @@ impl AsRef<[u8]> for EmbeddedBytes<'_> {
 
 pub enum BinaryHandle<'a> {
 	File(&'a mut std::fs::File),
-	Memory(Cursor<&'a mut [u8]>)
+	Memory(Cursor<&'a mut [u8]>),
 }
 impl BinaryHandle<'_> {
 	pub fn len(&mut self) -> Option<u64> {
 		match self {
-			Self::File(f) => {
-				f.metadata().ok().map(|metadata| metadata.len()).or_else(|| {
-					let current_pos = f.stream_position().ok()?;
-					let len = f.seek(SeekFrom::End(0)).ok()?;
-					f.seek(SeekFrom::Start(current_pos)).ok()?;
-					Some(len)
-				})
-			},
-			Self::Memory(m) => Some(m.get_ref().len() as u64)
+			Self::File(f) => f.metadata().ok().map(|metadata| metadata.len()).or_else(|| {
+				let current_pos = f.stream_position().ok()?;
+				let len = f.seek(SeekFrom::End(0)).ok()?;
+				f.seek(SeekFrom::Start(current_pos)).ok()?;
+				Some(len)
+			}),
+			Self::Memory(m) => Some(m.get_ref().len() as u64),
 		}
 	}
 }
@@ -76,7 +88,7 @@ impl Write for BinaryHandle<'_> {
 	fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
 		match self {
 			Self::File(f) => f.write(buf),
-			Self::Memory(m) => m.write(buf)
+			Self::Memory(m) => m.write(buf),
 		}
 	}
 
@@ -84,7 +96,7 @@ impl Write for BinaryHandle<'_> {
 	fn flush(&mut self) -> std::io::Result<()> {
 		match self {
 			Self::File(f) => f.flush(),
-			Self::Memory(m) => m.flush()
+			Self::Memory(m) => m.flush(),
 		}
 	}
 }
@@ -93,7 +105,7 @@ impl Seek for BinaryHandle<'_> {
 	fn seek(&mut self, pos: SeekFrom) -> std::io::Result<u64> {
 		match self {
 			Self::File(f) => f.seek(pos),
-			Self::Memory(m) => m.seek(pos)
+			Self::Memory(m) => m.seek(pos),
 		}
 	}
 }
@@ -120,13 +132,13 @@ pub struct OwnedObject<'a> {
 
 	#[borrows(bytes)]
 	#[covariant]
-	object: goblin::Object<'this>
+	object: goblin::Object<'this>,
 }
 
 #[must_use]
 pub struct Embedder<'a> {
 	object: OwnedObject<'a>,
-	pub(crate) embeds: Embeds<'a>
+	pub(crate) embeds: Embeds<'a>,
 }
 impl<'a> Embedder<'a> {
 	pub fn new<H: Into<BinaryHandle<'a>>>(handle: H) -> Result<Embedder<'a>, Error> {
@@ -153,18 +165,19 @@ impl<'a> Embedder<'a> {
 
 		let object = OwnedObjectTryBuilder {
 			handle,
-			bytes_builder: |handle| Ok(match &handle {
-				BinaryHandle::Memory(m) => MaybeOwnedBytes::Borrowed(&**m.get_ref()),
-				BinaryHandle::File(_) => bytes.unwrap()
-			}),
-			object_builder: |bytes| {
-				super::parse_binary(bytes.as_ref())
-			}
-		}.try_build()?;
+			bytes_builder: |handle| {
+				Ok(match &handle {
+					BinaryHandle::Memory(m) => MaybeOwnedBytes::Borrowed(&**m.get_ref()),
+					BinaryHandle::File(_) => bytes.unwrap(),
+				})
+			},
+			object_builder: |bytes| super::parse_binary(bytes.as_ref()),
+		}
+		.try_build()?;
 
 		let mut embedder = Embedder {
 			object,
-			embeds: Embeds::default()
+			embeds: Embeds::default(),
 		};
 
 		embedder.discover_linkstores()?;
@@ -178,20 +191,17 @@ impl<'a> Embedder<'a> {
 
 		let mut handle = BufReader::with_capacity(256, Cursor::new(bytes.as_ref()));
 
-		discover_linkstores_impl(
-			bytes.as_ref(),
-			object,
-			&mut handle,
-			&mut self.embeds,
-			0
-		)
+		discover_linkstores_impl(bytes.as_ref(), object, &mut handle, &mut self.embeds, 0)
 	}
 
 	fn decode_section(
-		embeds: &mut Embeds, handle: &mut BufReader<Cursor<&'a [u8]>>,
-		header_offset: u64, header_size: u64,
-		is_64: bool, little_endian: bool,
-		fat_offset: u64
+		embeds: &mut Embeds,
+		handle: &mut BufReader<Cursor<&'a [u8]>>,
+		header_offset: u64,
+		header_size: u64,
+		is_64: bool,
+		little_endian: bool,
+		fat_offset: u64,
 	) -> Result<(), Error> {
 		use core::mem::size_of;
 
@@ -203,27 +213,23 @@ impl<'a> Embedder<'a> {
 		// 1 nul byte
 		// 2 usizes
 		// the rest is variable length
-		let minimum_header_size = 1 + 1 + ((if is_64 {
-			size_of::<u64>()
-		} else {
-			size_of::<u32>()
-		}) * 2);
+		let minimum_header_size = 1 + 1 + ((if is_64 { size_of::<u64>() } else { size_of::<u32>() }) * 2);
 
 		macro_rules! read_type {
 			($ty:ty) => {{
 				let mut buf = [0u8; size_of::<$ty>()];
 				handle.read_exact(&mut buf)?;
 				<$ty>::from_le_bytes(buf)
-			}}
+			}};
 		}
 
 		macro_rules! move_header_cursor {
 			($amount:expr) => {
 				header_size = match header_size.checked_sub($amount) {
 					Some(header_size) => header_size,
-					None => return Err(Error::UnexpectedEof)
+					None => return Err(Error::UnexpectedEof),
 				}
-			}
+			};
 		}
 
 		while header_size >= minimum_header_size {
@@ -233,9 +239,9 @@ impl<'a> Embedder<'a> {
 					if header_size < minimum_header_size {
 						break;
 					}
-				},
+				}
 				Err((std::io::ErrorKind::UnexpectedEof, _)) => break,
-				Err((_, err)) => return Err(Error::IoError(err))
+				Err((_, err)) => return Err(Error::IoError(err)),
 			}
 
 			let name = {
@@ -246,7 +252,7 @@ impl<'a> Embedder<'a> {
 					return Err(Error::NameDecodingError);
 				}
 
-				String::from_utf8_lossy(&name[0..name.len()-1]).into_owned()
+				String::from_utf8_lossy(&name[0..name.len() - 1]).into_owned()
 			};
 
 			let size = {
@@ -290,12 +296,16 @@ impl<'a> Embedder<'a> {
 				offset: offset + fat_offset,
 				size,
 				little_endian,
-				bytes: EmbeddedBytes::Unchanged(bytes)
+				bytes: EmbeddedBytes::Unchanged(bytes),
 			};
 
 			match embeds.entry(name) {
-				Entry::Occupied(mut o) => { o.get_mut().as_vec().push(embed); },
-				Entry::Vacant(v) => { v.insert(MaybeScalar::Scalar(embed)); },
+				Entry::Occupied(mut o) => {
+					o.get_mut().as_vec().push(embed);
+				}
+				Entry::Vacant(v) => {
+					v.insert(MaybeScalar::Scalar(embed));
+				}
 			}
 		}
 

@@ -48,7 +48,7 @@ pub enum Error {
 	UnexpectedEof,
 
 	#[error("I/O error: {0}")]
-	IoError(#[from] std::io::Error)
+	IoError(#[from] std::io::Error),
 }
 
 pub fn parse_binary<'a>(bytes: &'a [u8]) -> Result<goblin::Object<'a>, Error> {
@@ -56,11 +56,7 @@ pub fn parse_binary<'a>(bytes: &'a [u8]) -> Result<goblin::Object<'a>, Error> {
 }
 
 pub fn open_binary<P: AsRef<std::path::Path>>(path: P) -> Result<std::fs::File, Error> {
-	Ok(std::fs::OpenOptions::new()
-		.truncate(false)
-		.write(true)
-		.read(true)
-		.open(path)?)
+	Ok(std::fs::OpenOptions::new().truncate(false).write(true).read(true).open(path)?)
 }
 
 #[doc(hidden)]
@@ -71,7 +67,7 @@ macro_rules! linkstore {
 	{$($vis:vis static $name:ident: $ty:ty = $init:expr;)+} => {$(
 		#[allow(non_snake_case)]
 		$vis mod $name {
-			use core::mem::{size_of, align_of};
+			use ::core::mem::{size_of, align_of};
 
 			const NAME_LEN: usize = stringify!($name).len();
 
@@ -107,7 +103,7 @@ macro_rules! linkstore {
 			};
 
 			pub fn get() -> &'static $ty {
-				debug_assert_eq!(std::mem::align_of::<LinkStoreContainer<$ty>>(), align_of::<$ty>(), "Alignment error");
+				debug_assert_eq!(::core::mem::align_of::<LinkStoreContainer<$ty>>(), align_of::<$ty>(), "Alignment error");
 				$name.value.get()
 			}
 		}
@@ -126,7 +122,7 @@ impl<T> VolatileWrapper<T> {
 	#[doc(hidden)]
 	pub fn get(&'static self) -> &'static T {
 		unsafe {
-			std::mem::forget(std::ptr::read_volatile(self.0.get()));
+			core::mem::forget(core::ptr::read_volatile(self.0.get()));
 			&*self.0.get()
 		}
 	}

@@ -1,30 +1,30 @@
 pub(crate) enum MaybeOwnedBytes<'a> {
 	Borrowed(&'a [u8]),
-	Owned(Vec<u8>)
+	Owned(Vec<u8>),
 }
 impl AsRef<[u8]> for MaybeOwnedBytes<'_> {
 	#[inline(always)]
 	fn as_ref(&self) -> &[u8] {
 		match self {
 			Self::Borrowed(bytes) => bytes,
-			Self::Owned(owned) => owned
+			Self::Owned(owned) => owned,
 		}
 	}
 }
 
 pub(crate) enum MaybeScalar<T> {
 	Scalar(T),
-	Vec(Vec<T>)
+	Vec(Vec<T>),
 }
 impl<T> MaybeScalar<T> {
 	pub fn as_vec(&mut self) -> &mut Vec<T> {
 		*self = match core::mem::take(self) {
 			Self::Scalar(scalar) => Self::Vec(vec![scalar]),
-			unchanged @ Self::Vec(_) => unchanged
+			unchanged @ Self::Vec(_) => unchanged,
 		};
 		match self {
 			Self::Vec(vec) => vec,
-			_ => unreachable!()
+			_ => unreachable!(),
 		}
 	}
 }
@@ -59,7 +59,7 @@ impl<T> AsMut<[T]> for MaybeScalar<T> {
 	fn as_mut(&mut self) -> &mut [T] {
 		match self {
 			Self::Scalar(t) => core::slice::from_mut(t),
-			Self::Vec(t) => t.as_mut()
+			Self::Vec(t) => t.as_mut(),
 		}
 	}
 }

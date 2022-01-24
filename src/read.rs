@@ -1,6 +1,9 @@
+use crate::{
+	write::{BinaryEmbeddable, PendingEmbed},
+	Embedder, Error,
+};
 use core::marker::PhantomData;
-use std::mem::MaybeUninit;
-use crate::{write::{PendingEmbed, BinaryEmbeddable}, Embedder, Error};
+use core::mem::MaybeUninit;
 
 impl<'a> Embedder<'a> {
 	pub fn try_read<T: BinaryEmbeddable + TryDecodeBinaryEmbeddable>(&mut self, name: &str) -> Result<TryEmbeddedValueIterator<'_, T>, Error> {
@@ -56,17 +59,23 @@ pub enum TryDecodeBinaryEmbeddableArrayError<E> {
 	MismatchedBytesCount(usize, usize),
 
 	#[error("{0}")]
-	Other(#[from] E)
+	Other(#[from] E),
 }
 impl<T: TryDecodeBinaryEmbeddable, const N: usize> TryDecodeBinaryEmbeddable for [T; N] {
 	type Error = TryDecodeBinaryEmbeddableArrayError<<T as TryDecodeBinaryEmbeddable>::Error>;
 
 	fn try_from_le_bytes(bytes: &[u8]) -> Result<Self, Self::Error> {
 		if bytes.len() % core::mem::size_of::<T>() != 0 {
-			return Err(TryDecodeBinaryEmbeddableArrayError::MismatchedBytesCount(bytes.len(), core::mem::size_of::<T>()));
+			return Err(TryDecodeBinaryEmbeddableArrayError::MismatchedBytesCount(
+				bytes.len(),
+				core::mem::size_of::<T>(),
+			));
 		}
 		if bytes.len() < N * core::mem::size_of::<T>() {
-			return Err(TryDecodeBinaryEmbeddableArrayError::MismatchedElementCount(bytes.len() / core::mem::size_of::<T>(), N));
+			return Err(TryDecodeBinaryEmbeddableArrayError::MismatchedElementCount(
+				bytes.len() / core::mem::size_of::<T>(),
+				N,
+			));
 		}
 
 		let mut result = unsafe { MaybeUninit::<[MaybeUninit<T>; N]>::uninit().assume_init() };
@@ -81,7 +90,10 @@ impl<T: TryDecodeBinaryEmbeddable> TryDecodeBinaryEmbeddable for Vec<T> {
 
 	fn try_from_le_bytes(bytes: &[u8]) -> Result<Self, Self::Error> {
 		if bytes.len() % core::mem::size_of::<T>() != 0 {
-			return Err(TryDecodeBinaryEmbeddableArrayError::MismatchedBytesCount(bytes.len(), core::mem::size_of::<T>()));
+			return Err(TryDecodeBinaryEmbeddableArrayError::MismatchedBytesCount(
+				bytes.len(),
+				core::mem::size_of::<T>(),
+			));
 		}
 
 		let mut result = Vec::with_capacity(bytes.len() / core::mem::size_of::<T>());
@@ -115,7 +127,7 @@ macro_rules! impl_numbers {
 	($($ty:ty),+) => {$(
 		infallible_decode!(impl DecodeBinaryEmbeddable for $ty {
 			fn from_le_bytes(bytes: &[u8]) -> Self {
-				debug_assert_eq!(bytes.len(), std::mem::size_of::<$ty>());
+				debug_assert_eq!(bytes.len(), core::mem::size_of::<$ty>());
 				<$ty>::from_le_bytes(bytes.try_into().unwrap())
 			}
 		});
@@ -123,27 +135,36 @@ macro_rules! impl_numbers {
 }
 impl_numbers!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, f32, f64);
 
-pub struct TryEmbeddedValueIterator<'a, T> where T: TryDecodeBinaryEmbeddable {
+pub struct TryEmbeddedValueIterator<'a, T>
+where
+	T: TryDecodeBinaryEmbeddable,
+{
 	embeds: &'a [PendingEmbed<'a>],
 	idx: usize,
-	_phantom: PhantomData<T>
+	_phantom: PhantomData<T>,
 }
-impl<'a, T> TryEmbeddedValueIterator<'a, T> where T: TryDecodeBinaryEmbeddable {
+impl<'a, T> TryEmbeddedValueIterator<'a, T>
+where
+	T: TryDecodeBinaryEmbeddable,
+{
 	pub(crate) fn new(embeds: &'a [PendingEmbed<'a>]) -> Self {
 		Self {
 			embeds,
 			idx: 0,
-			_phantom: Default::default()
+			_phantom: Default::default(),
 		}
 	}
 }
-impl<'a, T: 'a> Iterator for TryEmbeddedValueIterator<'a, T> where T: TryDecodeBinaryEmbeddable {
+impl<'a, T: 'a> Iterator for TryEmbeddedValueIterator<'a, T>
+where
+	T: TryDecodeBinaryEmbeddable,
+{
 	type Item = Result<T, <T as TryDecodeBinaryEmbeddable>::Error>;
 
 	fn next(&mut self) -> Option<Self::Item> {
 		let embed = match self.embeds.get(self.idx) {
 			Some(embed) => embed,
-			None => return None
+			None => return None,
 		};
 		self.idx += 1;
 
@@ -155,27 +176,36 @@ impl<'a, T: 'a> Iterator for TryEmbeddedValueIterator<'a, T> where T: TryDecodeB
 	}
 }
 
-pub struct EmbeddedValueIterator<'a, T> where T: DecodeBinaryEmbeddable {
+pub struct EmbeddedValueIterator<'a, T>
+where
+	T: DecodeBinaryEmbeddable,
+{
 	embeds: &'a [PendingEmbed<'a>],
 	idx: usize,
-	_phantom: PhantomData<T>
+	_phantom: PhantomData<T>,
 }
-impl<'a, T> EmbeddedValueIterator<'a, T> where T: DecodeBinaryEmbeddable {
+impl<'a, T> EmbeddedValueIterator<'a, T>
+where
+	T: DecodeBinaryEmbeddable,
+{
 	pub(crate) fn new(embeds: &'a [PendingEmbed<'a>]) -> Self {
 		Self {
 			embeds,
 			idx: 0,
-			_phantom: Default::default()
+			_phantom: Default::default(),
 		}
 	}
 }
-impl<'a, T: 'a> Iterator for EmbeddedValueIterator<'a, T> where T: DecodeBinaryEmbeddable {
+impl<'a, T: 'a> Iterator for EmbeddedValueIterator<'a, T>
+where
+	T: DecodeBinaryEmbeddable,
+{
 	type Item = T;
 
 	fn next(&mut self) -> Option<Self::Item> {
 		let embed = match self.embeds.get(self.idx) {
 			Some(embed) => embed,
-			None => return None
+			None => return None,
 		};
 		self.idx += 1;
 

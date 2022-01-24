@@ -1,5 +1,5 @@
-use std::borrow::Cow;
 use crate::{embed::EmbeddedBytes, Embedder, Error};
+use std::borrow::Cow;
 
 impl<'a> Embedder<'a> {
 	pub fn embed<T: BinaryEmbeddable>(&mut self, name: &'a str, value: &'a T) -> Result<&mut Self, Error> {
@@ -10,11 +10,7 @@ impl<'a> Embedder<'a> {
 				return Err(Error::MismatchedSize(embed.size, core::mem::size_of::<T>()));
 			}
 
-			embed.bytes = EmbeddedBytes::Set(if embed.little_endian {
-				value.as_le_bytes()
-			} else {
-				value.as_be_bytes()
-			});
+			embed.bytes = EmbeddedBytes::Set(if embed.little_endian { value.as_le_bytes() } else { value.as_be_bytes() });
 		}
 
 		Ok(self)
