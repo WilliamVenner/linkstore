@@ -198,11 +198,16 @@ impl<'a> Embedder<'a> {
 		handle.seek(SeekFrom::Start(header_offset as _))?;
 
 		let mut header_size = header_size as usize;
-		let minimum_header_size = 3 + ((if is_64 {
+
+		// 1 magic byte
+		// 1 nul byte
+		// 2 usizes
+		// the rest is variable length
+		let minimum_header_size = 1 + 1 + ((if is_64 {
 			size_of::<u64>()
 		} else {
 			size_of::<u32>()
-		}));
+		}) * 2);
 
 		macro_rules! read_type {
 			($ty:ty) => {{
