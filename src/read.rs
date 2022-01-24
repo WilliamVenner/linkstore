@@ -85,43 +85,12 @@ impl<T: TryDecodeBinaryEmbeddable, const N: usize> TryDecodeBinaryEmbeddable for
 		Ok(result.map(|elem| unsafe { elem.assume_init() }))
 	}
 }
-impl<T: TryDecodeBinaryEmbeddable> TryDecodeBinaryEmbeddable for Vec<T> {
-	type Error = TryDecodeBinaryEmbeddableArrayError<<T as TryDecodeBinaryEmbeddable>::Error>;
-
-	fn try_from_le_bytes(bytes: &[u8]) -> Result<Self, Self::Error> {
-		if bytes.len() % core::mem::size_of::<T>() != 0 {
-			return Err(TryDecodeBinaryEmbeddableArrayError::MismatchedBytesCount(
-				bytes.len(),
-				core::mem::size_of::<T>(),
-			));
-		}
-
-		let mut result = Vec::with_capacity(bytes.len() / core::mem::size_of::<T>());
-		for chunk in bytes.chunks(core::mem::size_of::<T>()) {
-			result.push(T::try_from_le_bytes(chunk)?);
-		}
-		Ok(result)
-	}
-}
 
 infallible_decode!(impl DecodeBinaryEmbeddable for bool {
 	fn from_le_bytes(bytes: &[u8]) -> Self {
 		bytes[0] != 0
 	}
 });
-
-impl DecodeBinaryEmbeddable for String {
-	fn from_le_bytes(bytes: &[u8]) -> Self {
-		String::from_utf8_lossy(bytes).into_owned()
-	}
-}
-impl TryDecodeBinaryEmbeddable for String {
-	type Error = core::str::Utf8Error;
-
-	fn try_from_le_bytes(bytes: &[u8]) -> Result<Self, Self::Error> {
-		core::str::from_utf8(bytes).map(|str| str.to_string())
-	}
-}
 
 macro_rules! impl_numbers {
 	($($ty:ty),+) => {$(

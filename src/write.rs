@@ -42,22 +42,6 @@ impl BinaryEmbeddable for bool {
 	}
 }
 
-impl BinaryEmbeddable for String {
-	fn as_le_bytes<'a>(&'a self) -> Cow<'a, [u8]> {
-		Cow::Borrowed(self.as_bytes())
-	}
-}
-
-impl<T: BinaryEmbeddable> BinaryEmbeddable for Vec<T> {
-	fn as_le_bytes<'a>(&'a self) -> Cow<'a, [u8]> {
-		let mut bytes = Vec::with_capacity(core::mem::size_of::<T>() * self.len());
-		for elem in self {
-			bytes.extend_from_slice(elem.as_le_bytes().as_ref());
-		}
-		Cow::Owned(bytes)
-	}
-}
-
 impl<T: BinaryEmbeddable, const N: usize> BinaryEmbeddable for [T; N] {
 	fn as_le_bytes<'a>(&'a self) -> Cow<'a, [u8]> {
 		let mut bytes = Vec::with_capacity(self.len() * core::mem::size_of::<T>());
@@ -76,16 +60,6 @@ impl<T: BinaryEmbeddable, const N: usize> BinaryEmbeddable for [T; N] {
 	}
 }
 
-impl BinaryEmbeddable for [u8] {
-	fn as_le_bytes<'a>(&'a self) -> Cow<'a, [u8]> {
-		Cow::Borrowed(self)
-	}
-}
-impl BinaryEmbeddable for str {
-	fn as_le_bytes<'a>(&'a self) -> Cow<'a, [u8]> {
-		Cow::Borrowed(self.as_bytes())
-	}
-}
 macro_rules! impl_numbers {
 	($($ty:ty),+) => {$(
 		impl BinaryEmbeddable for $ty {
