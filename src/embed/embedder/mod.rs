@@ -69,24 +69,22 @@ where
 /// ## Example
 ///
 /// ```no_run
-/// fn main() {
-///     // You can use linkstore::open_binary` to open a binary file from the filesystem.
-///     let mut binary: std::fs::File = linkstore::open_binary("C:\\Windows\\system32\\kernel32.dll").unwrap();
+/// // You can use linkstore::open_binary` to open a binary file from the filesystem.
+/// let mut binary: std::fs::File = linkstore::open_binary("C:\\Windows\\system32\\kernel32.dll").unwrap();
 ///
-///     // Alternatively, you can work directly on a memory buffer or memory-mapped file using a `std::io::Cursor`
-///     let mut binary: Vec<u8> = std::fs::read("C:\\Windows\\system32\\kernel32.dll").unwrap();
-///     let mut binary: std::io::Cursor<&mut [u8]> = std::io::Cursor::new(&mut binary);
+/// // Alternatively, you can work directly on a memory buffer or memory-mapped file using a `std::io::Cursor`
+/// let mut binary: Vec<u8> = std::fs::read("C:\\Windows\\system32\\kernel32.dll").unwrap();
+/// let mut binary: std::io::Cursor<&mut [u8]> = std::io::Cursor::new(&mut binary);
 ///
-///     let mut embedder = linkstore::Embedder::new(&mut binary).unwrap();
+/// let mut embedder = linkstore::Embedder::new(&mut binary).unwrap();
 ///
-///     embedder.embed("LINKSTORE_TEST", &69_u64).unwrap();
-///     embedder.embed("LINKSTORE_YEAH", &420_u32).unwrap();
-///     embedder.embed("LINKSTORE_BYTES", &[1_u8, 2, 3, 4]).unwrap();
-///     embedder.embed("LINKSTORE_SHORTS", &[1_u16, 2, 3, 4]).unwrap();
-///     embedder.embed("LINKSTORE_BIG", &(u128::MAX / 2)).unwrap();
+/// embedder.embed("LINKSTORE_TEST", &69_u64).unwrap();
+/// embedder.embed("LINKSTORE_YEAH", &420_u32).unwrap();
+/// embedder.embed("LINKSTORE_BYTES", &[1_u8, 2, 3, 4]).unwrap();
+/// embedder.embed("LINKSTORE_SHORTS", &[1_u16, 2, 3, 4]).unwrap();
+/// embedder.embed("LINKSTORE_BIG", &(u128::MAX / 2)).unwrap();
 ///
-///     embedder.finish().unwrap();
-/// }
+/// embedder.finish().unwrap();
 /// ```
 pub struct Embedder<'a, IO>
 where
@@ -256,7 +254,7 @@ where
 	/// This function is unsafe because malformed, corrupted or otherwise invalid data in the binary or unsound decoding implementations may cause undefined behavior.
 	pub unsafe fn try_read<T: EncodeLinkstore + TryDecodeLinkstore>(&mut self, name: &str) -> Result<TryEmbeddedValueIterator<'_, T>, Error> {
 		let embeds = self.embeds.get(name).ok_or_else(|| Error::NotPresent(name.to_string()))?.as_ref();
-		if embeds.len() > 0 && embeds[0].size != core::mem::size_of::<T>() as u64 {
+		if !embeds.is_empty() && embeds[0].size != core::mem::size_of::<T>() as u64 {
 			return Err(Error::MismatchedSize(embeds[0].size, core::mem::size_of::<T>()));
 		}
 		Ok(TryEmbeddedValueIterator::new(embeds))
@@ -269,7 +267,7 @@ where
 	/// This function is unsafe because malformed, corrupted or otherwise invalid data in the binary or unsound decoding implementations may cause undefined behavior.
 	pub unsafe fn read<T: EncodeLinkstore + DecodeLinkstore>(&mut self, name: &str) -> Result<EmbeddedValueIterator<'_, T>, Error> {
 		let embeds = self.embeds.get(name).ok_or_else(|| Error::NotPresent(name.to_string()))?.as_ref();
-		if embeds.len() > 0 && embeds[0].size != core::mem::size_of::<T>() as u64 {
+		if !embeds.is_empty() && embeds[0].size != core::mem::size_of::<T>() as u64 {
 			return Err(Error::MismatchedSize(embeds[0].size, core::mem::size_of::<T>()));
 		}
 		Ok(EmbeddedValueIterator::new(embeds))

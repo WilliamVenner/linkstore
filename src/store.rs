@@ -52,7 +52,7 @@ pub mod private {
 ///         println!("LINKSTORE_BYTES = {:?}", LINKSTORE_BYTES::get());
 ///         println!("LINKSTORE_SHORTS = {:?}", LINKSTORE_SHORTS::get());
 ///         println!("LINKSTORE_BIG = {:b}", LINKSTORE_BIG::get());
-/// 	}
+///     }
 /// }
 /// ```
 #[macro_export]

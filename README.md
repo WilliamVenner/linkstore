@@ -41,24 +41,22 @@ fn main() {
 Once your binary has been built, you can use linkstore to modify the values.
 
 ```rust
-fn main() {
-    // You can use `linkstore::open_binary` to open a binary file from the filesystem.
-    let mut binary: std::fs::File = linkstore::open_binary("C:\\Windows\\system32\\kernel32.dll").unwrap();
+// You can use `linkstore::open_binary` to open a binary file from the filesystem.
+let mut binary: std::fs::File = linkstore::open_binary("C:\\Windows\\system32\\kernel32.dll").unwrap();
 
-    // Alternatively, you can work directly on a memory buffer or memory-mapped file using a `std::io::Cursor`
-    let mut binary: Vec<u8> = std::fs::read("C:\\Windows\\system32\\kernel32.dll").unwrap();
-    let mut binary: std::io::Cursor<&mut [u8]> = std::io::Cursor::new(&mut binary);
+// Alternatively, you can work directly on a memory buffer or memory-mapped file using a `std::io::Cursor`
+let mut binary: Vec<u8> = std::fs::read("C:\\Windows\\system32\\kernel32.dll").unwrap();
+let mut binary: std::io::Cursor<&mut [u8]> = std::io::Cursor::new(&mut binary);
 
-    let mut embedder = linkstore::Embedder::new(&mut binary).unwrap();
+let mut embedder = linkstore::Embedder::new(&mut binary).unwrap();
 
-    embedder.embed("LINKSTORE_TEST", &69_u64).unwrap();
-    embedder.embed("LINKSTORE_YEAH", &420_u32).unwrap();
-    embedder.embed("LINKSTORE_BYTES", &[1_u8, 2, 3, 4]).unwrap();
-    embedder.embed("LINKSTORE_SHORTS", &[1_u16, 2, 3, 4]).unwrap();
-    embedder.embed("LINKSTORE_BIG", &(u128::MAX / 2)).unwrap();
+embedder.embed("LINKSTORE_TEST", &69_u64).unwrap();
+embedder.embed("LINKSTORE_YEAH", &420_u32).unwrap();
+embedder.embed("LINKSTORE_BYTES", &[1_u8, 2, 3, 4]).unwrap();
+embedder.embed("LINKSTORE_SHORTS", &[1_u16, 2, 3, 4]).unwrap();
+embedder.embed("LINKSTORE_BIG", &(u128::MAX / 2)).unwrap();
 
-    embedder.finish().unwrap();
-}
+embedder.finish().unwrap();
 ```
 
 # TODO
@@ -66,3 +64,4 @@ fn main() {
 * MacOS binaries support
 * MacO + fat binaries support
 * When specialization is stabilized, implement a ton of specialization and potentially extra serialization/deserialization support
+* Continuous integration

@@ -15,7 +15,7 @@ pub(super) fn discover_linkstores<'a, IO: BinaryHandle<'a> + 'a>(
 		let bin = &handle[offset as usize..][..bin.size() as usize];
 
 		super::discover_linkstores::<IO>(
-			&bin,
+			bin,
 			&goblin::Object::parse(bin)?,
 			&mut BufReader::new(Cursor::new(bin)),
 			all_embeds,

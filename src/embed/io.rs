@@ -4,13 +4,13 @@ use crate::Error;
 
 #[doc(hidden)]
 pub trait BinaryHandle<'a>: Read + Write + Seek {
-	fn get_memory_ref<'b>(&'b self) -> Option<&'b [u8]>;
+	fn get_memory_ref(&self) -> Option<&[u8]>;
 	fn get_memory(&mut self) -> Result<Option<Vec<u8>>, Error>;
 	fn size_hint(&mut self) -> Option<u64>;
 }
 impl<'a> BinaryHandle<'a> for Cursor<&'a mut [u8]> {
 	#[inline]
-	fn get_memory_ref<'b>(&'b self) -> Option<&'b [u8]> {
+	fn get_memory_ref(&self) -> Option<&[u8]> {
 		Some(&**self.get_ref())
 	}
 
@@ -26,7 +26,7 @@ impl<'a> BinaryHandle<'a> for Cursor<&'a mut [u8]> {
 }
 impl<'a> BinaryHandle<'a> for File {
 	#[inline]
-	fn get_memory_ref<'b>(&'b self) -> Option<&'b [u8]> {
+	fn get_memory_ref(&self) -> Option<&[u8]> {
 		None
 	}
 
