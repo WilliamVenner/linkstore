@@ -2,6 +2,7 @@ use std::{io::{Seek, SeekFrom, Read, Write, Cursor}, fs::File};
 
 use crate::Error;
 
+#[doc(hidden)]
 pub trait BinaryHandle<'a>: Read + Write + Seek {
 	fn get_memory_ref<'b>(&'b self) -> Option<&'b [u8]>;
 	fn get_memory(&mut self) -> Result<Option<Vec<u8>>, Error>;

@@ -12,6 +12,9 @@ categories = ["development-tools::build-utils", "development-tools::ffi", "encod
 [workspace]
 members = ["tests"]
 
+[package.metadata.docs.rs]
+features = ["docs"]
+
 [profile.linkstore-test-release]
 inherits = "release"
 lto = true
@@ -22,6 +25,7 @@ opt-level = "s"
 default = ["embedder", "store"]
 embedder = []
 store = []
+docs = []
 
 [dependencies]
 goblin = "0"

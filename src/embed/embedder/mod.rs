@@ -64,6 +64,30 @@ where
 }
 
 #[must_use]
+/// The `Embedder` allows you to read and manipulate linkstores in a binary executable.
+///
+/// ## Example
+///
+/// ```no_run
+/// fn main() {
+///     // You can use linkstore::open_binary` to open a binary file from the filesystem.
+///     let mut binary: std::fs::File = linkstore::open_binary("C:\\Windows\\system32\\kernel32.dll").unwrap();
+///
+///     // Alternatively, you can work directly on a memory buffer or memory-mapped file using a `std::io::Cursor`
+///     let mut binary: Vec<u8> = std::fs::read("C:\\Windows\\system32\\kernel32.dll").unwrap();
+///     let mut binary: std::io::Cursor<&mut [u8]> = std::io::Cursor::new(&mut binary);
+///
+///     let mut embedder = linkstore::Embedder::new(&mut binary).unwrap();
+///
+///     embedder.embed("LINKSTORE_TEST", &69_u64).unwrap();
+///     embedder.embed("LINKSTORE_YEAH", &420_u32).unwrap();
+///     embedder.embed("LINKSTORE_BYTES", &[1_u8, 2, 3, 4]).unwrap();
+///     embedder.embed("LINKSTORE_SHORTS", &[1_u16, 2, 3, 4]).unwrap();
+///     embedder.embed("LINKSTORE_BIG", &(u128::MAX / 2)).unwrap();
+///
+///     embedder.finish().unwrap();
+/// }
+/// ```
 pub struct Embedder<'a, IO>
 where
 	IO: BinaryHandle<'a>
@@ -75,6 +99,9 @@ impl<'a, IO> Embedder<'a, IO>
 where
 	IO: BinaryHandle<'a>
 {
+	/// Creates a new [`Embedder`] for a binary executable.
+	///
+	/// The handle must implement [`BinaryHandle`](crate::BinaryHandle)!
 	pub fn new(handle: &'a mut IO) -> Result<Embedder<'a, IO>, Error> {
 		let bytes = handle.get_memory()?;
 
@@ -268,7 +295,7 @@ where
 		Ok(self)
 	}
 
-	/// Consume the Embedder and write the linkstores to file or memory buffer.
+	/// Consume the Embedder and write the linkstores to the file or memory buffer.
 	pub fn finish(self) -> Result<(), Error> {
 		let handle = self.object.into_heads().handle;
 

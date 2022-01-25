@@ -1,6 +1,10 @@
 use core::mem::MaybeUninit;
 
 /// Implemented for types that can be decoded from a linkstore.
+///
+/// ## Safety
+///
+/// Implementing this trait is extremely unsafe. The bytes will be effectively [`core::mem::transmute`]d into the type in the compiled binary, so the bytes must be valid and in the correct endianness if applicable.
 pub unsafe trait DecodeLinkstore: Sized + TryDecodeLinkstore {
 	fn from_le_bytes(bytes: &[u8]) -> Self;
 	fn from_be_bytes(bytes: &[u8]) -> Self {
@@ -11,6 +15,10 @@ pub unsafe trait DecodeLinkstore: Sized + TryDecodeLinkstore {
 /// Implemented for types that can be decoded from a linkstore, but may be fallible.
 ///
 /// Some types have validity constraints that must be checked. For example, arrays must contain a fixed number of elements.
+///
+/// ## Safety
+///
+/// Implementing this trait is extremely unsafe. The bytes will be effectively [`core::mem::transmute`]d into the type in the compiled binary, so the bytes must be valid and in the correct endianness if applicable.
 pub unsafe trait TryDecodeLinkstore: Sized {
 	type Error;
 	fn try_from_le_bytes(bytes: &[u8]) -> Result<Self, Self::Error>;

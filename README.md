@@ -26,11 +26,13 @@ linkstore! {
 }
 
 fn main() {
-    println!("LINKSTORE_TEST = {:x}", LINKSTORE_TEST::get());
-    println!("LINKSTORE_YEAH = {:x}", LINKSTORE_YEAH::get());
-    println!("LINKSTORE_BYTES = {:?}", LINKSTORE_BYTES::get());
-    println!("LINKSTORE_SHORTS = {:?}", LINKSTORE_SHORTS::get());
-    println!("LINKSTORE_BIG = {:b}", LINKSTORE_BIG::get());
+    unsafe {
+        println!("LINKSTORE_TEST = {:x}", LINKSTORE_TEST::get());
+        println!("LINKSTORE_YEAH = {:x}", LINKSTORE_YEAH::get());
+        println!("LINKSTORE_BYTES = {:?}", LINKSTORE_BYTES::get());
+        println!("LINKSTORE_SHORTS = {:?}", LINKSTORE_SHORTS::get());
+        println!("LINKSTORE_BIG = {:b}", LINKSTORE_BIG::get());
+    }
 }
 ```
 
@@ -40,12 +42,12 @@ Once your binary has been built, you can use linkstore to modify the values.
 
 ```rust
 fn main() {
-	// You can use `linkstore::open_binary` to open a binary file from the filesystem.
+    // You can use `linkstore::open_binary` to open a binary file from the filesystem.
     let mut binary: std::fs::File = linkstore::open_binary("C:\\Windows\\system32\\kernel32.dll").unwrap();
 
-	// Alternatively, you can work directly on a memory buffer or memory-mapped file using a `std::io::Cursor`
-	let mut binary: Vec<u8> = std::fs::read("C:\\Windows\\system32\\kernel32.dll").unwrap();
-	let mut binary: std::io::Cursor<&mut [u8]> = std::io::Cursor::new(&mut binary);
+    // Alternatively, you can work directly on a memory buffer or memory-mapped file using a `std::io::Cursor`
+    let mut binary: Vec<u8> = std::fs::read("C:\\Windows\\system32\\kernel32.dll").unwrap();
+    let mut binary: std::io::Cursor<&mut [u8]> = std::io::Cursor::new(&mut binary);
 
     let mut embedder = linkstore::Embedder::new(&mut binary).unwrap();
 

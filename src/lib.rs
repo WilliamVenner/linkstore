@@ -55,6 +55,8 @@ pub enum Error {
 // Public exports
 pub use goblin;
 
+pub use embed::{encode::EncodeLinkstore, decode::{DecodeLinkstore, TryDecodeLinkstore}};
+
 #[cfg(feature = "embedder")]
 pub use embed::embedder::{open_binary, Embedder};
 
@@ -81,17 +83,3 @@ pub use store::private as __private;
 /// ```
 pub trait BinaryHandle<'a>: embed::io::BinaryHandle<'a> {}
 impl<'a, PRIVATE: embed::io::BinaryHandle<'a>> BinaryHandle<'a> for PRIVATE {}
-
-/// Implemented for types that can be encoded into a linkstore.
-pub unsafe trait EncodeLinkstore: embed::encode::EncodeLinkstore {}
-unsafe impl<PRIVATE: embed::encode::EncodeLinkstore> EncodeLinkstore for PRIVATE {}
-
-/// Implemented for types that can be decoded from a linkstore.
-pub unsafe trait DecodeLinkstore: embed::decode::DecodeLinkstore {}
-unsafe impl<PRIVATE: embed::decode::DecodeLinkstore> DecodeLinkstore for PRIVATE {}
-
-/// Implemented for types that can be decoded from a linkstore, but may be fallible.
-///
-/// Some types have validity constraints that must be checked. For example, arrays must contain a fixed number of elements.
-pub unsafe trait TryDecodeLinkstore: embed::decode::TryDecodeLinkstore {}
-unsafe impl<PRIVATE: embed::decode::TryDecodeLinkstore> TryDecodeLinkstore for PRIVATE {}

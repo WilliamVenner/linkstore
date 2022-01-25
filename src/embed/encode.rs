@@ -4,6 +4,10 @@ use std::borrow::Cow;
 pub const MAGIC: u8 = 234;
 
 /// Implemented for types that can be encoded into a linkstore.
+///
+/// ## Safety
+///
+/// Implementing this trait is extremely unsafe. The bytes will be effectively [`core::mem::transmute`]d into the type in the compiled binary, so the bytes must be valid and in the correct endianness if applicable.
 pub unsafe trait EncodeLinkstore {
 	fn as_le_bytes<'a>(&'a self) -> Cow<'a, [u8]>;
 	fn as_be_bytes<'a>(&'a self) -> Cow<'a, [u8]> {
