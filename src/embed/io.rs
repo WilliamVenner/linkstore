@@ -1,4 +1,7 @@
-use std::{io::{Seek, SeekFrom, Read, Write, Cursor}, fs::File};
+use std::{
+	fs::File,
+	io::{Cursor, Read, Seek, SeekFrom, Write},
+};
 
 use crate::Error;
 

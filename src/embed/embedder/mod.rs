@@ -1,6 +1,9 @@
+use super::{
+	decode::{DecodeLinkstore, TryDecodeLinkstore},
+	encode::{EncodeLinkstore, MAGIC},
+	io::BinaryHandle,
+};
 use crate::Error;
-use super::io::BinaryHandle;
-use super::{encode::{MAGIC, EncodeLinkstore}, decode::{DecodeLinkstore, TryDecodeLinkstore}};
 use std::{
 	borrow::Cow,
 	collections::{hash_map::Entry, HashMap},
@@ -50,7 +53,7 @@ impl AsRef<[u8]> for LinkstoreBytes<'_> {
 #[ouroboros::self_referencing]
 pub struct OwnedObject<'a, IO>
 where
-	IO: BinaryHandle<'a>
+	IO: BinaryHandle<'a>,
 {
 	handle: &'a mut IO,
 
@@ -88,14 +91,14 @@ where
 /// ```
 pub struct Embedder<'a, IO>
 where
-	IO: BinaryHandle<'a>
+	IO: BinaryHandle<'a>,
 {
 	object: OwnedObject<'a, IO>,
 	pub(crate) embeds: Linkstores<'a>,
 }
 impl<'a, IO> Embedder<'a, IO>
 where
-	IO: BinaryHandle<'a>
+	IO: BinaryHandle<'a>,
 {
 	/// Creates a new [`Embedder`] for a binary executable.
 	///

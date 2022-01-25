@@ -58,10 +58,7 @@ unsafe impl<T: TryDecodeLinkstore, const N: usize> TryDecodeLinkstore for [T; N]
 
 	fn try_from_le_bytes(bytes: &[u8]) -> Result<Self, Self::Error> {
 		if bytes.len() % core::mem::size_of::<T>() != 0 {
-			return Err(TryDecodeLinkstoreArrayError::MismatchedBytesCount(
-				bytes.len(),
-				core::mem::size_of::<T>(),
-			));
+			return Err(TryDecodeLinkstoreArrayError::MismatchedBytesCount(bytes.len(), core::mem::size_of::<T>()));
 		}
 		if bytes.len() < N * core::mem::size_of::<T>() {
 			return Err(TryDecodeLinkstoreArrayError::MismatchedElementCount(
@@ -78,11 +75,13 @@ unsafe impl<T: TryDecodeLinkstore, const N: usize> TryDecodeLinkstore for [T; N]
 	}
 }
 
-infallible_decode!(unsafe impl DecodeLinkstore for bool {
-	fn from_le_bytes(bytes: &[u8]) -> Self {
-		bytes[0] != 0
+infallible_decode!(
+	unsafe impl DecodeLinkstore for bool {
+		fn from_le_bytes(bytes: &[u8]) -> Self {
+			bytes[0] != 0
+		}
 	}
-});
+);
 
 macro_rules! impl_numbers {
 	($($ty:ty),+) => {$(

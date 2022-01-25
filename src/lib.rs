@@ -114,7 +114,10 @@ pub enum Error {
 // Public exports
 pub use goblin;
 
-pub use embed::{encode::EncodeLinkstore, decode::{DecodeLinkstore, TryDecodeLinkstore}};
+pub use embed::{
+	decode::{DecodeLinkstore, TryDecodeLinkstore},
+	encode::EncodeLinkstore,
+};
 
 #[cfg(feature = "embedder")]
 pub use embed::embedder::{open_binary, Embedder};

@@ -1,5 +1,8 @@
+use crate::embed::{
+	decode::{DecodeLinkstore, TryDecodeLinkstore},
+	embedder::Linkstore,
+};
 use std::marker::PhantomData;
-use crate::embed::{embedder::Linkstore, decode::{DecodeLinkstore, TryDecodeLinkstore}};
 
 pub struct TryEmbeddedValueIterator<'a, T>
 where

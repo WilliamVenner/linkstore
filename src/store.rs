@@ -1,7 +1,7 @@
 #[doc(hidden)]
 pub mod private {
-	use core::{cell::UnsafeCell, mem::size_of};
 	use crate::TryDecodeLinkstore;
+	use core::{cell::UnsafeCell, mem::size_of};
 
 	pub use crate::embed::encode::MAGIC;
 
@@ -26,7 +26,7 @@ pub mod private {
 	pub const fn calc_padding<Container, T>(name: &'static str) -> usize
 	where
 		Container: Sized,
-		T: Sized
+		T: Sized,
 	{
 		size_of::<Container>() - (name.len() + 1 + 1) - (size_of::<usize>() * 2) - size_of::<T>()
 	}
