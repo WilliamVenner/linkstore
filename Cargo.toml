@@ -1,6 +1,6 @@
 [package]
 name = "linkstore"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 authors = ["William Venner <william@venner.io>"]
 description = "Library for embedding, manipulating and retrieving data embedded in binaries using linker sections"
@@ -9,19 +9,25 @@ repository = "https://github.com/WilliamVenner/linkstore"
 keywords = ["linker", "elf", "pe", "binary", "linkstore"]
 categories = ["development-tools::build-utils", "development-tools::ffi", "encoding"]
 
+[workspace]
+members = ["tests"]
+
 [profile.linkstore-test-release]
 inherits = "release"
 lto = true
 debug = false
 opt-level = "s"
 
-[workspace]
-members = ["tests"]
+[features]
+default = ["embedder", "store"]
+embedder = []
+store = []
 
 [dependencies]
 goblin = "0"
 thiserror = "1"
 ouroboros = "0"
+sealed = "0"
 
 [dev-dependencies]
 libloading = "0"

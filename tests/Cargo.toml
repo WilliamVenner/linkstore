@@ -25,4 +25,4 @@ crate-type = ["bin"]
 path = "src/bin.rs"
 
 [dependencies]
-linkstore = { path = "../" }
+linkstore = { path = "../", default-features = false, features = ["store"] }

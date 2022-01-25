@@ -59,7 +59,7 @@ fn build(target: &str) {
 		.success());
 }
 
-fn first_pass(embedder: &mut Embedder) {
+unsafe fn first_pass<'a, IO: BinaryHandle<'a>>(embedder: &mut Embedder<'a, IO>) {
 	assert_eq!(embedder.read::<u64>("LINKSTORE_TEST").unwrap().next(), Some(0xDEADBEEF_u64));
 	assert_eq!(embedder.read::<u32>("LINKSTORE_YEAH").unwrap().next(), Some(0xDEADBEEF_u32));
 	assert!(matches!(
@@ -78,7 +78,7 @@ fn first_pass(embedder: &mut Embedder) {
 	embedder.embed("LINKSTORE_BIG", &(u128::MAX / 2)).unwrap();
 }
 
-fn second_pass(embedder: &mut Embedder) {
+unsafe fn second_pass<'a, IO: BinaryHandle<'a>>(embedder: &mut Embedder<'a, IO>) {
 	assert_eq!(embedder.read::<u64>("LINKSTORE_TEST").unwrap().next(), Some(69_u64));
 	assert_eq!(embedder.read::<u32>("LINKSTORE_YEAH").unwrap().next(), Some(420_u32));
 	assert!(matches!(
@@ -99,14 +99,14 @@ fn test_executable(path: &str, lib: bool, open: bool) {
 	{
 		let mut binary = crate::open_binary(path).unwrap();
 		let mut embedder = Embedder::new(&mut binary).unwrap();
-		first_pass(&mut embedder);
+		unsafe { first_pass(&mut embedder) };
 		embedder.finish().unwrap();
 	}
 
 	{
 		let mut binary = crate::open_binary(path).unwrap();
 		let mut embedder = Embedder::new(&mut binary).unwrap();
-		second_pass(&mut embedder);
+		unsafe { second_pass(&mut embedder) };
 	}
 
 	if open {

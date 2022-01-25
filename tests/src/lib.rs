@@ -10,7 +10,7 @@ pub struct LinkStoreTest {
 }
 
 #[no_mangle]
-pub extern "C" fn linkstore_test() -> LinkStoreTest {
+pub unsafe extern "C" fn linkstore_test() -> LinkStoreTest {
 	let (d, e) = {
 		let bytes = common::LINKSTORE_BIG::get().to_le_bytes();
 		let (d, e) = bytes.split_at(bytes.len() / 2);

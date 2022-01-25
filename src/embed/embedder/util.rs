@@ -1,17 +1,6 @@
-pub(crate) enum MaybeOwnedBytes<'a> {
-	Borrowed(&'a [u8]),
-	Owned(Vec<u8>),
-}
-impl AsRef<[u8]> for MaybeOwnedBytes<'_> {
-	#[inline(always)]
-	fn as_ref(&self) -> &[u8] {
-		match self {
-			Self::Borrowed(bytes) => bytes,
-			Self::Owned(owned) => owned,
-		}
-	}
-}
-
+/// Either a single T or a Vec<T> of values.
+///
+/// Reduces heap allocations.
 pub(crate) enum MaybeScalar<T> {
 	Scalar(T),
 	Vec(Vec<T>),
@@ -60,17 +49,6 @@ impl<T> AsMut<[T]> for MaybeScalar<T> {
 		match self {
 			Self::Scalar(t) => core::slice::from_mut(t),
 			Self::Vec(t) => t.as_mut(),
-		}
-	}
-}
-impl<T> IntoIterator for MaybeScalar<T> {
-	type Item = T;
-	type IntoIter = <Vec<T> as IntoIterator>::IntoIter;
-
-	fn into_iter(self) -> Self::IntoIter {
-		match self {
-			Self::Scalar(t) => vec![t].into_iter(),
-			Self::Vec(t) => t.into_iter(),
 		}
 	}
 }

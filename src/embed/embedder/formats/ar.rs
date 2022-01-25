@@ -1,7 +1,7 @@
 use super::*;
-pub(super) fn discover_linkstores<'a>(
-	all_embeds: &mut Embeds,
-	handle: &mut BufReader<Cursor<&'a [u8]>>,
+pub(super) fn discover_linkstores<'a, IO: BinaryHandle<'a> + 'a>(
+	all_embeds: &mut Linkstores,
+	handle: &mut BufReader<Cursor<&[u8]>>,
 	ar: &goblin::archive::Archive,
 	ar_offset: u64,
 ) -> Result<(), Error> {
@@ -14,9 +14,9 @@ pub(super) fn discover_linkstores<'a>(
 		let offset = ar_offset + bin.offset;
 		let bin = &handle[offset as usize..][..bin.size() as usize];
 
-		discover_linkstores_impl(
+		super::discover_linkstores::<IO>(
 			&bin,
-			&crate::parse_binary(bin)?,
+			&goblin::Object::parse(bin)?,
 			&mut BufReader::new(Cursor::new(bin)),
 			all_embeds,
 			offset,

@@ -6,11 +6,7 @@ linkstore currently supports ELF and PE executable formats and can be used with 
 
 # Usage
 
-## Defining linkstore globals
-
-First, you must define the globals you want to linkstore.
-
-Only simple, memory-contigious, "plain old data" types can be serialized and deserialized by default. You can try and define your own, but remember that you cannot make any heap allocations or use pointers. Normal Rust `const` and `static` rules apply.
+## Defining & using linkstore globals
 
 ```rust
 #[macro_use] extern crate linkstore;
@@ -38,8 +34,14 @@ Once your binary has been built, you can use linkstore to modify the values.
 
 ```rust
 fn main() {
-    let mut binary = linkstore::open_binary("C:\\Windows\\system32\\kernel32.dll").unwrap();
-    let mut embedder = Embedder::new(&mut binary).unwrap();
+	// You can use `linkstore::open_binary` to open a binary file from the filesystem.
+    let mut binary: std::fs::File = linkstore::open_binary("C:\\Windows\\system32\\kernel32.dll").unwrap();
+
+	// Alternatively, you can work directly on a memory buffer or memory-mapped file using a `std::io::Cursor`
+	let mut binary: Vec<u8> = std::fs::read("C:\\Windows\\system32\\kernel32.dll").unwrap();
+	let mut binary: std::io::Cursor<&mut [u8]> = std::io::Cursor::new(&mut binary);
+
+    let mut embedder = linkstore::Embedder::new(&mut binary).unwrap();
 
     embedder.embed("LINKSTORE_TEST", &69_u64).unwrap();
     embedder.embed("LINKSTORE_YEAH", &420_u32).unwrap();
@@ -51,10 +53,14 @@ fn main() {
 }
 ```
 
+## Using custom structs and types
+
+linkstore can serialize and deserialize numbers (excluding `usize` and `isize`), `bool` and fixed-length arrays out of the box.
+
+For anything else, you'll need to implement the `EncodeLinkstore` trait yourself.
+
 # TODO
 
 * MacOS binaries support
 * MacO + fat binaries support
-* String/Vec serialization/deserialization (if possible)
-* Documentation
-* Refactor and clean up code
+* When specialization is stabilized, implement a ton of specialization and extra serialization/deserialization support
