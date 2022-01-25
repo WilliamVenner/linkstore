@@ -4,6 +4,12 @@ linkstore is a library that allows you to define global variables in your final 
 
 linkstore currently supports ELF and PE executable formats and can be used with both statically and dynamically linked libraries.
 
+# Supported types
+
+Currently, linkstore can serialize and deserialize numbers (excluding `usize` and `isize`), `bool` and fixed-length arrays out of the box.
+
+For anything else, you'll need to implement your own deserialization from fixed-length byte arrays.
+
 # Usage
 
 ## Defining & using linkstore globals
@@ -53,14 +59,8 @@ fn main() {
 }
 ```
 
-## Using custom structs and types
-
-linkstore can serialize and deserialize numbers (excluding `usize` and `isize`), `bool` and fixed-length arrays out of the box.
-
-For anything else, you'll need to implement the `EncodeLinkstore` trait yourself.
-
 # TODO
 
 * MacOS binaries support
 * MacO + fat binaries support
-* When specialization is stabilized, implement a ton of specialization and extra serialization/deserialization support
+* When specialization is stabilized, implement a ton of specialization and potentially extra serialization/deserialization support
