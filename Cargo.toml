@@ -1,6 +1,6 @@
 [package]
 name = "linkstore"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 authors = ["William Venner <william@venner.io>"]
 description = "Library for embedding, manipulating and retrieving data embedded in binaries using linker sections"
