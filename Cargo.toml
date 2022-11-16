@@ -28,10 +28,10 @@ store = []
 docs = []
 
 [dependencies]
-goblin = "0"
+goblin = "0.6"
 thiserror = "1"
-ouroboros = "0"
-sealed = "0"
+ouroboros = "0.15"
+sealed = "0.4"
 
 [dev-dependencies]
 libloading = "0"
