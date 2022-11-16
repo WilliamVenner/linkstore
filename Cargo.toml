@@ -34,4 +34,4 @@ ouroboros = "0.15"
 sealed = "0.4"
 
 [dev-dependencies]
-libloading = "0"
+libloading = "0.7"
