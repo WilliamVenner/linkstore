@@ -1,0 +1,14 @@
+name: CD
+
+on: tag
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Publish
+      run: cargo publish --all-features --token "${{ secrets.CRATES_IO_TOKEN }}"
