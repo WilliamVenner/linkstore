@@ -11,7 +11,7 @@ pub(super) fn discover_linkstores<'a, IO: BinaryHandle<'a> + 'a>(
 		.iter()
 		.filter_map(|section| filter_map_linkstore_section(elf.shdr_strtab.get_at(section.sh_name)?.as_bytes(), section))
 	{
-		Embedder::<IO>::decode_section(embeds, handle, header.sh_offset, header.sh_size, elf.is_64, elf.little_endian, ar_offset)?;
+		Embedder::<IO>::decode_section(embeds, handle, header.sh_offset, header.sh_size, ar_offset)?;
 	}
 	Ok(())
 }

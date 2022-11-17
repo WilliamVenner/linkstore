@@ -7,12 +7,9 @@ pub const MAGIC: u8 = 234;
 ///
 /// ## Safety
 ///
-/// Implementing this trait is extremely unsafe. The bytes will be effectively [`core::mem::transmute`]d into the type in the compiled binary, so the bytes must be valid and in the correct endianness if applicable.
+/// Implementing this trait is extremely unsafe. The bytes will be effectively [`core::mem::transmute`]d into the type in the compiled binary, so the bytes must be valid and normalized to little-endian if applicable.
 pub unsafe trait EncodeLinkstore {
 	fn as_le_bytes(&self) -> Cow<'_, [u8]>;
-	fn as_be_bytes(&self) -> Cow<'_, [u8]> {
-		self.as_le_bytes()
-	}
 }
 
 unsafe impl EncodeLinkstore for bool {
@@ -33,14 +30,6 @@ unsafe impl<T: EncodeLinkstore, const N: usize> EncodeLinkstore for [T; N] {
 		}
 		Cow::Owned(bytes)
 	}
-
-	fn as_be_bytes(&self) -> Cow<'_, [u8]> {
-		let mut bytes = Vec::with_capacity(self.len() * core::mem::size_of::<T>());
-		for elem in self {
-			bytes.extend_from_slice(elem.as_be_bytes().as_ref());
-		}
-		Cow::Owned(bytes)
-	}
 }
 
 macro_rules! impl_numbers {
@@ -48,9 +37,6 @@ macro_rules! impl_numbers {
 		unsafe impl EncodeLinkstore for $ty {
 			fn as_le_bytes(&self) -> Cow<'_, [u8]> {
 				self.to_le_bytes().to_vec().into()
-			}
-			fn as_be_bytes(&self) -> Cow<'_, [u8]> {
-				self.to_be_bytes().to_vec().into()
 			}
 		}
 	)+}

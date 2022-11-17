@@ -17,8 +17,6 @@ pub(super) fn discover_linkstores<'a, IO: BinaryHandle<'a> + 'a>(
 				handle,
 				section.offset as u64,
 				section.size,
-				macho.is_64,
-				macho.little_endian,
 				fat_offset,
 			)?;
 		}

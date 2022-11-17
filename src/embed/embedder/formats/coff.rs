@@ -1,7 +1,5 @@
 use super::*;
 
-const IMAGE_FILE_32BIT_MACHINE: u16 = 0x0100;
-
 pub(super) fn discover_linkstores<'a, IO: BinaryHandle<'a> + 'a>(
 	embeds: &mut Linkstores,
 	handle: &mut BufReader<Cursor<&[u8]>>,
@@ -18,8 +16,6 @@ pub(super) fn discover_linkstores<'a, IO: BinaryHandle<'a> + 'a>(
 			handle,
 			header.pointer_to_raw_data as _,
 			header.size_of_raw_data as _,
-			coff.header.characteristics & IMAGE_FILE_32BIT_MACHINE == 0,
-			true,
 			ar_offset,
 		)?;
 	}

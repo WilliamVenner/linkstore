@@ -37,11 +37,7 @@ where
 		};
 		self.idx += 1;
 
-		if embed.little_endian {
-			Some(TryDecodeLinkstore::try_from_le_bytes(embed.bytes.as_ref()))
-		} else {
-			Some(TryDecodeLinkstore::try_from_be_bytes(embed.bytes.as_ref()))
-		}
+		Some(TryDecodeLinkstore::try_from_le_bytes(embed.bytes.as_ref()))
 	}
 }
 
@@ -78,10 +74,6 @@ where
 		};
 		self.idx += 1;
 
-		if embed.little_endian {
-			Some(DecodeLinkstore::from_le_bytes(embed.bytes.as_ref()))
-		} else {
-			Some(DecodeLinkstore::from_be_bytes(embed.bytes.as_ref()))
-		}
+		Some(DecodeLinkstore::from_le_bytes(embed.bytes.as_ref()))
 	}
 }

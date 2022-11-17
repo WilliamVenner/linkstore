@@ -4,12 +4,9 @@ use core::mem::MaybeUninit;
 ///
 /// ## Safety
 ///
-/// Implementing this trait is extremely unsafe. The bytes will be effectively [`core::mem::transmute`]d into the type in the compiled binary, so the bytes must be valid and in the correct endianness if applicable.
+/// Implementing this trait is extremely unsafe. The bytes will be effectively [`core::mem::transmute`]d into the type in the compiled binary, so the bytes must be valid and converted to big-endian if we're on a big-endian machine.
 pub unsafe trait DecodeLinkstore: Sized + TryDecodeLinkstore {
 	fn from_le_bytes(bytes: &[u8]) -> Self;
-	fn from_be_bytes(bytes: &[u8]) -> Self {
-		Self::from_le_bytes(bytes)
-	}
 }
 
 /// Implemented for types that can be decoded from a linkstore, but may be fallible.
@@ -18,13 +15,10 @@ pub unsafe trait DecodeLinkstore: Sized + TryDecodeLinkstore {
 ///
 /// ## Safety
 ///
-/// Implementing this trait is extremely unsafe. The bytes will be effectively [`core::mem::transmute`]d into the type in the compiled binary, so the bytes must be valid and in the correct endianness if applicable.
+/// Implementing this trait is extremely unsafe. The bytes will be effectively [`core::mem::transmute`]d into the type in the compiled binary, so the bytes must be converted to big-endian if we're on a big-endian machine.
 pub unsafe trait TryDecodeLinkstore: Sized {
 	type Error;
 	fn try_from_le_bytes(bytes: &[u8]) -> Result<Self, Self::Error>;
-	fn try_from_be_bytes(bytes: &[u8]) -> Result<Self, Self::Error> {
-		Self::try_from_le_bytes(bytes)
-	}
 }
 
 /// Automatically implements an `core::convert::Infallible` implementation of `TryDecodeLinkstore` during implementation of `DecodeLinkstore`
@@ -87,7 +81,6 @@ macro_rules! impl_numbers {
 	($($ty:ty),+) => {$(
 		infallible_decode!(unsafe impl DecodeLinkstore for $ty {
 			fn from_le_bytes(bytes: &[u8]) -> Self {
-				debug_assert_eq!(bytes.len(), core::mem::size_of::<$ty>());
 				<$ty>::from_le_bytes(bytes.try_into().unwrap())
 			}
 		});

@@ -30,7 +30,6 @@ pub fn open_binary<P: AsRef<std::path::Path>>(path: P) -> Result<std::fs::File, 
 pub(crate) struct Linkstore<'a> {
 	pub(crate) offset: u64,
 	pub(crate) size: u64,
-	pub(crate) little_endian: bool,
 	pub(crate) bytes: LinkstoreBytes<'a>,
 }
 
@@ -139,8 +138,6 @@ where
 		handle: &mut BufReader<Cursor<&[u8]>>,
 		header_offset: u64,
 		header_size: u64,
-		is_64: bool,
-		little_endian: bool,
 		fat_offset: u64,
 	) -> Result<(), Error> {
 		use core::mem::size_of;
@@ -151,9 +148,9 @@ where
 
 		// 1 magic byte
 		// 1 nul byte
-		// 2 usizes
+		// 2 u64
 		// the rest is variable length
-		let minimum_header_size = 1 + 1 + ((if is_64 { size_of::<u64>() } else { size_of::<u32>() }) * 2);
+		let minimum_header_size = 1 + 1 + (size_of::<u64>() * 2);
 
 		macro_rules! read_type {
 			($ty:ty) => {{
@@ -196,23 +193,13 @@ where
 			};
 
 			let size = {
-				if is_64 {
-					move_header_cursor!(size_of::<u64>());
-					read_type!(u64)
-				} else {
-					move_header_cursor!(size_of::<u32>());
-					read_type!(u32) as u64
-				}
+				move_header_cursor!(size_of::<u64>());
+				read_type!(u64)
 			};
 
 			let padding = {
-				if is_64 {
-					move_header_cursor!(size_of::<u64>());
-					read_type!(u64)
-				} else {
-					move_header_cursor!(size_of::<u32>());
-					read_type!(u32) as u64
-				}
+				move_header_cursor!(size_of::<u64>());
+				read_type!(u64)
 			};
 
 			move_header_cursor!(padding as usize);
@@ -235,7 +222,6 @@ where
 			let embed = Linkstore {
 				offset: offset + fat_offset,
 				size,
-				little_endian,
 				bytes: LinkstoreBytes::Unchanged(bytes),
 			};
 
@@ -293,7 +279,7 @@ where
 				return Err(Error::MismatchedSize(embed.size, core::mem::size_of::<T>()));
 			}
 
-			let bytes = if embed.little_endian { value.as_le_bytes() } else { value.as_be_bytes() };
+			let bytes = value.as_le_bytes();
 			if bytes.len() != core::mem::size_of::<T>() {
 				return Err(Error::MismatchedSize(bytes.len() as u64, core::mem::size_of::<T>()));
 			}

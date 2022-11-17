@@ -15,8 +15,6 @@ pub(super) fn discover_linkstores<'a, IO: BinaryHandle<'a> + 'a>(
 			handle,
 			header.pointer_to_raw_data as _,
 			header.virtual_size as _,
-			pe.is_64,
-			true,
 			ar_offset,
 		)?;
 	}
