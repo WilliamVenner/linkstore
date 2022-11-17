@@ -21,6 +21,7 @@ use iter::{EmbeddedValueIterator, TryEmbeddedValueIterator};
 /// Opens a binary file in read and write mode without truncation.
 ///
 /// The returned [`std::fs::File`] is suitable for use with [`Embedder`]
+#[cfg_attr(docsrs, doc(cfg(feature = "embedder")))]
 pub fn open_binary<P: AsRef<std::path::Path>>(path: P) -> Result<std::fs::File, Error> {
 	Ok(std::fs::OpenOptions::new().truncate(false).write(true).read(true).open(path)?)
 }
@@ -66,7 +67,6 @@ where
 	object: goblin::Object<'this>,
 }
 
-#[must_use]
 /// The `Embedder` allows you to read and manipulate linkstores in a binary executable.
 ///
 /// ## Example
@@ -89,6 +89,8 @@ where
 ///
 /// embedder.finish().unwrap();
 /// ```
+#[cfg_attr(docsrs, doc(cfg(feature = "embedder")))]
+#[must_use]
 pub struct Embedder<'a, IO>
 where
 	IO: BinaryHandle<'a>,

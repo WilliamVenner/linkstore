@@ -55,6 +55,7 @@ pub mod private {
 ///     }
 /// }
 /// ```
+#[cfg_attr(docsrs, doc(cfg(feature = "store")))]
 #[macro_export]
 macro_rules! linkstore {
 	{$($vis:vis static $name:ident: $ty:ty = $init:expr;)+} => {$(

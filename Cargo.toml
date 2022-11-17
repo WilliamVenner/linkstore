@@ -13,7 +13,8 @@ categories = ["development-tools::build-utils", "development-tools::ffi", "encod
 members = ["tests"]
 
 [package.metadata.docs.rs]
-features = ["docs"]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [profile.linkstore-test-release]
 inherits = "release"
@@ -25,7 +26,6 @@ opt-level = "s"
 default = ["embedder", "store"]
 embedder = []
 store = []
-docs = []
 
 [dependencies]
 goblin = "0.6"

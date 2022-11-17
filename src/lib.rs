@@ -1,3 +1,5 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
 //! linkstore is a library that allows you to define global variables in your final compiled binary that can be modified post-compilation.
 //!
 //! linkstore currently supports ELF and PE executable formats and can be used with both statically and dynamically linked libraries.
