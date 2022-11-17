@@ -32,9 +32,12 @@ pub(super) fn discover_linkstores_multiarch<'a, IO: BinaryHandle<'a> + 'a>(
 	multiarch: &goblin::mach::MultiArch,
 ) -> Result<(), Error> {
 	for (i, arch) in multiarch.iter_arches().enumerate() {
-		let arch = arch?;
-		let macho = multiarch.get(i)?;
-		discover_linkstores::<IO>(embeds, handle, &macho, arch.offset as u64)?;
+		let offset = arch?.offset as u64;
+		let arch = multiarch.get(i)?;
+		match arch {
+			goblin::mach::SingleArch::MachO(macho) => discover_linkstores::<IO>(embeds, handle, &macho, offset)?,
+			goblin::mach::SingleArch::Archive(ar) => super::ar::discover_linkstores::<IO>(embeds, handle, &ar, offset)?,
+		}
 	}
 	Ok(())
 }

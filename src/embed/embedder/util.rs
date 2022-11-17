@@ -1,6 +1,7 @@
 /// Either a single T or a Vec<T> of values.
 ///
 /// Reduces heap allocations.
+#[derive(Debug)]
 pub(crate) enum MaybeScalar<T> {
 	Scalar(T),
 	Vec(Vec<T>),

@@ -277,6 +277,12 @@ where
 	}
 
 	/// Register a linkstore to be embedded.
+	///
+	/// ## macOS Binaries
+	///
+	/// Because macOS binaries (namely Mach-O) are signed, patching them invalidates the signature; the signature is formed partially from the contents of the binary itself.
+	///
+	/// It's out of the scope of `linkstore` to remedy this, so please remember to resign your binaries after embedding linkstores. Most macOS machines will refuse to run binaries with missing or invalid signatures.
 	pub fn embed<T: EncodeLinkstore>(&mut self, name: &'a str, value: &'a T) -> Result<&mut Self, Error> {
 		let embeds = self.embeds.get_mut(name).ok_or_else(|| Error::NotPresent(name.to_string()))?;
 

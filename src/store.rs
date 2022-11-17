@@ -73,7 +73,8 @@ macro_rules! linkstore {
 				pub value: VolatileWrapper<T>
 			}
 
-			#[link_section = ".lnkstre"]
+			#[cfg_attr(target_os = "macos", link_section = "__TEXT,.lnkstre")]
+			#[cfg_attr(not(target_os = "macos"), link_section = ".lnkstre")]
 			#[used]
 			static $name: LinkStoreContainer<$ty> = LinkStoreContainer {
 				name: {

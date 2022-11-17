@@ -10,6 +10,7 @@ pub struct LinkStoreTest {
 }
 
 #[no_mangle]
+#[allow(clippy::missing_safety_doc)]
 pub unsafe extern "C" fn linkstore_test() -> LinkStoreTest {
 	let (d, e) = {
 		let bytes = common::LINKSTORE_BIG::get().to_le_bytes();

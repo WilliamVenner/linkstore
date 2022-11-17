@@ -93,8 +93,21 @@ unsafe fn second_pass<'a, IO: BinaryHandle<'a>>(embedder: &mut Embedder<'a, IO>)
 }
 
 fn test_executable(path: &str, lib: bool, open: bool) {
-	#[cfg(target_os = "linux")]
-	assert!(Command::new("strip").arg(path).status().unwrap().success());
+	#[cfg(unix)] {
+		#[cfg(not(target_os = "macos"))]
+		assert!(Command::new("strip").arg(path).status().unwrap().success());
+
+		#[cfg(target_os = "macos")] {
+			let mut strip = Command::new("strip");
+
+			if lib {
+				// default `strip` is too aggressive for dylibs on macOS
+				strip.arg("-x");
+			}
+
+			assert!(strip.arg(path).status().unwrap().success());
+		}
+	}
 
 	{
 		let mut binary = crate::open_binary(path).unwrap();
@@ -109,6 +122,15 @@ fn test_executable(path: &str, lib: bool, open: bool) {
 		unsafe { second_pass(&mut embedder) };
 	}
 
+	#[cfg(target_os = "macos")] {
+		// We need to resign the binary to be able to run it
+		assert!(Command::new("codesign")
+			.args(&["--force", "--sign", "-", path])
+			.status()
+			.unwrap()
+			.success());
+	}
+
 	if open {
 		if lib {
 			unsafe {
@@ -120,9 +142,18 @@ fn test_executable(path: &str, lib: bool, open: bool) {
 			let output = Command::new(path).output().unwrap();
 			if output.status.code() != Some(123) {
 				panic!(
-					"Code: {:?} != {:?}\n{}\n{}",
+					"Code: {:?} != {:?}{}\n{}\n{}",
 					output.status.code(),
 					Some(123),
+					{
+						#[cfg(unix)] {
+							use std::os::unix::process::ExitStatusExt;
+							format!("\nSignal: {:?}\nStopped Signal: {:?}", output.status.signal(), output.status.stopped_signal())
+						}
+						#[cfg(not(unix))] {
+							""
+						}
+					},
 					String::from_utf8_lossy(&output.stdout),
 					String::from_utf8_lossy(&output.stderr)
 				);
@@ -131,162 +162,108 @@ fn test_executable(path: &str, lib: bool, open: bool) {
 	}
 }
 
-#[test]
-#[cfg(target_os = "windows")]
-fn linkstore() {
-	{
-		build("i686-pc-windows-msvc");
-		test_executable(
-			"tests/target/i686-pc-windows-msvc/linkstore-test-release/examples/linkstore_tests_bin.exe",
-			false,
-			true,
-		);
-		//test_executable("tests/target/i686-pc-windows-msvc/linkstore-test-release/examples/linkstore_tests_staticlib.lib", true, false);
-		#[cfg(target_pointer_width = "32")]
-		{
-			test_executable(
-				"tests/target/i686-pc-windows-msvc/linkstore-test-release/examples/linkstore_tests_dylib.dll",
-				true,
-				true,
-			);
-			test_executable(
-				"tests/target/i686-pc-windows-msvc/linkstore-test-release/examples/linkstore_tests_cdylib.dll",
-				true,
-				true,
-			);
-		}
-		#[cfg(not(target_pointer_width = "32"))]
-		{
-			test_executable(
-				"tests/target/i686-pc-windows-msvc/linkstore-test-release/examples/linkstore_tests_dylib.dll",
-				true,
-				false,
-			);
-			test_executable(
-				"tests/target/i686-pc-windows-msvc/linkstore-test-release/examples/linkstore_tests_cdylib.dll",
-				true,
-				false,
-			);
-		}
-	}
+macro_rules! generate_target_tests {
+	{$({
+		target_os = $target_os:literal,
+		target_arch = $target_arch:literal,
+		target_pointer_width = $target_pointer_width:literal,
+		target_triple = $target_triple:literal,
 
-	{
-		build("x86_64-pc-windows-msvc");
-		test_executable(
-			"tests/target/x86_64-pc-windows-msvc/linkstore-test-release/examples/linkstore_tests_bin.exe",
-			false,
-			true,
-		);
-		//test_executable("tests/target/x86_64-pc-windows-msvc/linkstore-test-release/examples/linkstore_tests_staticlib.lib", true, false);
-		#[cfg(target_pointer_width = "64")]
-		{
-			test_executable(
-				"tests/target/x86_64-pc-windows-msvc/linkstore-test-release/examples/linkstore_tests_dylib.dll",
-				true,
-				true,
-			);
-			test_executable(
-				"tests/target/x86_64-pc-windows-msvc/linkstore-test-release/examples/linkstore_tests_cdylib.dll",
-				true,
-				true,
-			);
-		}
-		#[cfg(not(target_pointer_width = "64"))]
-		{
-			test_executable(
-				"tests/target/x86_64-pc-windows-msvc/linkstore-test-release/examples/linkstore_tests_dylib.dll",
-				true,
-				false,
-			);
-			test_executable(
-				"tests/target/x86_64-pc-windows-msvc/linkstore-test-release/examples/linkstore_tests_cdylib.dll",
-				true,
-				false,
-			);
-		}
-	}
+		format_executable: $format_executable:literal,
+		format_dylib: $format_dylib:literal,
+		format_staticlib: $format_staticlib:literal,
+	}),*} => {
+		$(
+			#[test]
+			#[cfg(all(target_os = $target_os, target_arch = $target_arch, target_pointer_width = $target_pointer_width))]
+			fn linkstore() {
+				build($target_triple);
+				test_executable(
+					format!(concat!("tests/target/", $target_triple, "/linkstore-test-release/examples/", $format_executable), "linkstore_tests_bin").as_str(),
+					false,
+					true,
+				);
+				test_executable(
+					format!(concat!("tests/target/", $target_triple, "/linkstore-test-release/examples/", $format_staticlib), "linkstore_tests_staticlib").as_str(),
+					true,
+					false
+				);
+				test_executable(
+					format!(concat!("tests/target/", $target_triple, "/linkstore-test-release/examples/", $format_dylib), "linkstore_tests_dylib").as_str(),
+					true,
+					true,
+				);
+				test_executable(
+					format!(concat!("tests/target/", $target_triple, "/linkstore-test-release/examples/", $format_dylib), "linkstore_tests_cdylib").as_str(),
+					true,
+					true,
+				);
+			}
+		)*
+	};
 }
-
-#[test]
-#[cfg(target_os = "linux")]
-fn linkstore() {
+generate_target_tests! {
+	// x86_64
 	{
-		build("i686-unknown-linux-gnu");
-		test_executable(
-			"tests/target/i686-unknown-linux-gnu/linkstore-test-release/examples/linkstore_tests_bin",
-			false,
-			true,
-		);
-		test_executable(
-			"tests/target/i686-unknown-linux-gnu/linkstore-test-release/examples/liblinkstore_tests_staticlib.a",
-			true,
-			false,
-		);
-		#[cfg(target_pointer_width = "32")]
-		{
-			test_executable(
-				"tests/target/i686-unknown-linux-gnu/linkstore-test-release/examples/liblinkstore_tests_dylib.so",
-				true,
-				true,
-			);
-			test_executable(
-				"tests/target/i686-unknown-linux-gnu/linkstore-test-release/examples/liblinkstore_tests_cdylib.so",
-				true,
-				true,
-			);
-		}
-		#[cfg(not(target_pointer_width = "32"))]
-		{
-			test_executable(
-				"tests/target/i686-unknown-linux-gnu/linkstore-test-release/examples/liblinkstore_tests_dylib.so",
-				true,
-				false,
-			);
-			test_executable(
-				"tests/target/i686-unknown-linux-gnu/linkstore-test-release/examples/liblinkstore_tests_cdylib.so",
-				true,
-				false,
-			);
-		}
-	}
+		target_os = "windows",
+		target_arch = "x86_64",
+		target_pointer_width = "64",
+		target_triple = "x86_64-pc-windows-msvc",
 
+		format_executable: "{}.exe",
+		format_dylib: "{}.dll",
+		format_staticlib: "{}.lib",
+	},
 	{
-		build("x86_64-unknown-linux-gnu");
-		test_executable(
-			"tests/target/x86_64-unknown-linux-gnu/linkstore-test-release/examples/linkstore_tests_bin",
-			false,
-			true,
-		);
-		test_executable(
-			"tests/target/x86_64-unknown-linux-gnu/linkstore-test-release/examples/liblinkstore_tests_staticlib.a",
-			true,
-			false,
-		);
-		#[cfg(target_pointer_width = "64")]
-		{
-			test_executable(
-				"tests/target/x86_64-unknown-linux-gnu/linkstore-test-release/examples/liblinkstore_tests_dylib.so",
-				true,
-				true,
-			);
-			test_executable(
-				"tests/target/x86_64-unknown-linux-gnu/linkstore-test-release/examples/liblinkstore_tests_cdylib.so",
-				true,
-				true,
-			);
-		}
-		#[cfg(not(target_pointer_width = "64"))]
-		{
-			test_executable(
-				"tests/target/x86_64-unknown-linux-gnu/linkstore-test-release/examples/liblinkstore_tests_dylib.so",
-				true,
-				false,
-			);
-			test_executable(
-				"tests/target/x86_64-unknown-linux-gnu/linkstore-test-release/examples/liblinkstore_tests_cdylib.so",
-				true,
-				false,
-			);
-		}
+		target_os = "linux",
+		target_arch = "x86_64",
+		target_pointer_width = "64",
+		target_triple = "x86_64-unknown-linux-gnu",
+
+		format_executable: "{}",
+		format_dylib: "lib{}.so",
+		format_staticlib: "lib{}.a",
+	},
+	{
+		target_os = "macos",
+		target_arch = "x86_64",
+		target_pointer_width = "64",
+		target_triple = "x86_64-apple-darwin",
+
+		format_executable: "{}",
+		format_dylib: "lib{}.dylib",
+		format_staticlib: "lib{}.a",
+	},
+
+	// aarm64
+	{
+		target_os = "windows",
+		target_arch = "aarch64",
+		target_pointer_width = "64",
+		target_triple = "aarch64-pc-windows-msvc",
+
+		format_executable: "{}.exe",
+		format_dylib: "{}.dll",
+		format_staticlib: "{}.lib",
+	},
+	{
+		target_os = "linux",
+		target_arch = "aarch64",
+		target_pointer_width = "64",
+		target_triple = "aarch64-unknown-linux-gnu",
+
+		format_executable: "{}",
+		format_dylib: "lib{}.so",
+		format_staticlib: "lib{}.a",
+	},
+	{
+		target_os = "macos",
+		target_arch = "aarch64",
+		target_pointer_width = "64",
+		target_triple = "aarch64-apple-darwin",
+
+		format_executable: "{}",
+		format_dylib: "lib{}.dylib",
+		format_staticlib: "lib{}.a",
 	}
 }

@@ -1,4 +1,5 @@
 use super::*;
+
 pub(super) fn discover_linkstores<'a, IO: BinaryHandle<'a> + 'a>(
 	embeds: &mut Linkstores,
 	handle: &mut BufReader<Cursor<&[u8]>>,
