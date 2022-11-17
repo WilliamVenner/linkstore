@@ -17,8 +17,8 @@ pub(super) fn discover_linkstores<'a, IO: BinaryHandle<'a> + 'a>(
 			embeds,
 			handle,
 			header.pointer_to_raw_data as _,
-			header.virtual_size as _,
-			dbg!(coff.header.characteristics & IMAGE_FILE_32BIT_MACHINE != 0),
+			header.size_of_raw_data as _,
+			coff.header.characteristics & IMAGE_FILE_32BIT_MACHINE == 0,
 			true,
 			ar_offset,
 		)?;

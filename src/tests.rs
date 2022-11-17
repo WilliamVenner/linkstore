@@ -41,6 +41,7 @@ fn build(target: &str) {
 		.status()
 		.unwrap()
 		.success());
+
 	assert!(Command::new("cargo")
 		.args(&[
 			"build",
@@ -93,6 +94,8 @@ unsafe fn second_pass<'a, IO: BinaryHandle<'a>>(embedder: &mut Embedder<'a, IO>)
 }
 
 fn test_executable(path: &str, lib: bool, open: bool) {
+	println!("Testing {path:?} (library: {lib})");
+
 	#[cfg(unix)] {
 		#[cfg(not(target_os = "macos"))]
 		assert!(Command::new("strip").arg(path).status().unwrap().success());
@@ -181,7 +184,7 @@ macro_rules! generate_target_tests {
 				test_executable(
 					format!(concat!("tests/target/", $target_triple, "/linkstore-test-release/examples/", $format_executable), "linkstore_tests_bin").as_str(),
 					false,
-					true,
+					true
 				);
 				test_executable(
 					format!(concat!("tests/target/", $target_triple, "/linkstore-test-release/examples/", $format_staticlib), "linkstore_tests_staticlib").as_str(),
@@ -191,12 +194,12 @@ macro_rules! generate_target_tests {
 				test_executable(
 					format!(concat!("tests/target/", $target_triple, "/linkstore-test-release/examples/", $format_dylib), "linkstore_tests_dylib").as_str(),
 					true,
-					true,
+					true
 				);
 				test_executable(
 					format!(concat!("tests/target/", $target_triple, "/linkstore-test-release/examples/", $format_dylib), "linkstore_tests_cdylib").as_str(),
 					true,
-					true,
+					true
 				);
 			}
 		)*
