@@ -58,10 +58,3 @@ embedder.embed("LINKSTORE_BIG", &(u128::MAX / 2)).unwrap();
 
 embedder.finish().unwrap();
 ```
-
-# TODO
-
-* MacOS binaries support
-* MacO + fat binaries support
-* When specialization is stabilized, implement a ton of specialization and potentially extra serialization/deserialization support
-* Continuous integration
