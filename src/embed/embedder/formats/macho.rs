@@ -12,13 +12,7 @@ pub(super) fn discover_linkstores<'a, IO: BinaryHandle<'a> + 'a>(
 			.iter()
 			.filter_map(|(section, _)| filter_map_linkstore_section(section.name().ok()?.as_bytes(), section))
 		{
-			Embedder::<IO>::decode_section(
-				embeds,
-				handle,
-				section.offset as u64,
-				section.size,
-				fat_offset,
-			)?;
+			Embedder::<IO>::decode_section(embeds, handle, section.offset as u64, section.size, fat_offset)?;
 		}
 	}
 	Ok(())

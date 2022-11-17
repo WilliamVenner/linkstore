@@ -28,10 +28,10 @@ jobs:
     - uses: actions/checkout@v3
     - name: Add targets
       run: rustup target add x86_64-unknown-linux-gnu i686-unknown-linux-gnu
-    - name: Run tests (64-bit)
-      run: cargo test --target x86_64-unknown-linux-gnu -- --nocapture
     - name: Run tests (32-bit)
       run: cargo test --target i686-unknown-linux-gnu -- --nocapture
+    - name: Run tests (64-bit)
+      run: cargo test --target x86_64-unknown-linux-gnu -- --nocapture
 
   test_windows:
     needs: format
@@ -40,10 +40,10 @@ jobs:
     - uses: actions/checkout@v3
     - name: Add targets
       run: rustup target add x86_64-pc-windows-msvc i686-pc-windows-msvc
-    - name: Run tests (64-bit)
-      run: cargo test --target x86_64-pc-windows-msvc -- --nocapture
     - name: Run tests (32-bit)
       run: cargo test --target i686-pc-windows-msvc -- --nocapture
+    - name: Run tests (64-bit)
+      run: cargo test --target x86_64-pc-windows-msvc -- --nocapture
 
   test_macos:
     needs: format
@@ -52,7 +52,7 @@ jobs:
     - uses: actions/checkout@v3
     - name: Add targets
       run: rustup target add x86_64-apple-darwin i686-apple-darwin
-    - name: Run tests (64-bit)
-      run: cargo test --target x86_64-apple-darwin -- --nocapture
     - name: Run tests (32-bit)
       run: cargo test --target i686-apple-darwin -- --nocapture
+    - name: Run tests (64-bit)
+      run: cargo test --target x86_64-apple-darwin -- --nocapture
