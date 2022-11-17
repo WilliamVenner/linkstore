@@ -215,7 +215,7 @@ macro_rules! generate_target_tests {
 	};
 }
 generate_target_tests! {
-	// x86_64
+	// x86_64 (64-bit)
 	{
 		target_os = "windows",
 		target_arch = "x86_64",
@@ -247,7 +247,39 @@ generate_target_tests! {
 		format_staticlib: "lib{}.a",
 	},
 
-	// aarm64
+	// x86 (32-bit)
+	{
+		target_os = "windows",
+		target_arch = "x86",
+		target_pointer_width = "32",
+		target_triple = "i686-pc-windows-msvc",
+
+		format_executable: "{}.exe",
+		format_dylib: "{}.dll",
+		format_staticlib: "{}.lib",
+	},
+	{
+		target_os = "linux",
+		target_arch = "x86",
+		target_pointer_width = "32",
+		target_triple = "i686-unknown-linux-gnu",
+
+		format_executable: "{}",
+		format_dylib: "lib{}.so",
+		format_staticlib: "lib{}.a",
+	},
+	{
+		target_os = "macos",
+		target_arch = "x86",
+		target_pointer_width = "32",
+		target_triple = "i686-apple-darwin",
+
+		format_executable: "{}",
+		format_dylib: "lib{}.dylib",
+		format_staticlib: "lib{}.a",
+	},
+
+	// ARM (64-bit)
 	{
 		target_os = "windows",
 		target_arch = "aarch64",
@@ -273,6 +305,38 @@ generate_target_tests! {
 		target_arch = "aarch64",
 		target_pointer_width = "64",
 		target_triple = "aarch64-apple-darwin",
+
+		format_executable: "{}",
+		format_dylib: "lib{}.dylib",
+		format_staticlib: "lib{}.a",
+	},
+
+	// ARM (32-bit)
+	{
+		target_os = "windows",
+		target_arch = "arm",
+		target_pointer_width = "32",
+		target_triple = "armv7-pc-windows-msvc",
+
+		format_executable: "{}.exe",
+		format_dylib: "{}.dll",
+		format_staticlib: "{}.lib",
+	},
+	{
+		target_os = "linux",
+		target_arch = "arm",
+		target_pointer_width = "32",
+		target_triple = "armv7-unknown-linux-gnueabihf",
+
+		format_executable: "{}",
+		format_dylib: "lib{}.so",
+		format_staticlib: "lib{}.a",
+	},
+	{
+		target_os = "macos",
+		target_arch = "arm",
+		target_pointer_width = "32",
+		target_triple = "armv7-apple-darwin",
 
 		format_executable: "{}",
 		format_dylib: "lib{}.dylib",
