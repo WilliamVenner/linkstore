@@ -96,11 +96,13 @@ unsafe fn second_pass<'a, IO: BinaryHandle<'a>>(embedder: &mut Embedder<'a, IO>)
 fn test_executable(path: &str, lib: bool, open: bool) {
 	println!("Testing {path:?} (library: {lib})");
 
-	#[cfg(unix)] {
+	#[cfg(unix)]
+	{
 		#[cfg(not(target_os = "macos"))]
 		assert!(Command::new("strip").arg(path).status().unwrap().success());
 
-		#[cfg(target_os = "macos")] {
+		#[cfg(target_os = "macos")]
+		{
 			let mut strip = Command::new("strip");
 
 			if lib {
@@ -125,7 +127,8 @@ fn test_executable(path: &str, lib: bool, open: bool) {
 		unsafe { second_pass(&mut embedder) };
 	}
 
-	#[cfg(target_os = "macos")] {
+	#[cfg(target_os = "macos")]
+	{
 		// We need to resign the binary to be able to run it
 		assert!(Command::new("codesign")
 			.args(&["--force", "--sign", "-", path])
@@ -149,11 +152,17 @@ fn test_executable(path: &str, lib: bool, open: bool) {
 					output.status.code(),
 					Some(123),
 					{
-						#[cfg(unix)] {
+						#[cfg(unix)]
+						{
 							use std::os::unix::process::ExitStatusExt;
-							format!("\nSignal: {:?}\nStopped Signal: {:?}", output.status.signal(), output.status.stopped_signal())
+							format!(
+								"\nSignal: {:?}\nStopped Signal: {:?}",
+								output.status.signal(),
+								output.status.stopped_signal()
+							)
 						}
-						#[cfg(not(unix))] {
+						#[cfg(not(unix))]
+						{
 							""
 						}
 					},

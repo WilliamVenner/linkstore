@@ -3,8 +3,8 @@ use super::*;
 mod ar;
 mod coff;
 mod elf;
-mod pe;
 pub mod macho;
+mod pe;
 
 fn filter_map_linkstore_section<'a, T>(name: &'a [u8], section: &'a T) -> Option<&'a T> {
 	if name == b".lnkstre" {
