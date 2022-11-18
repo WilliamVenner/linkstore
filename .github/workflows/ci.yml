@@ -50,9 +50,5 @@ jobs:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v3
-    - name: Add targets
-      run: rustup target add x86_64-apple-darwin i686-apple-darwin
-    - name: Run tests (32-bit)
-      run: cargo test --target i686-apple-darwin -- --nocapture
-    - name: Run tests (64-bit)
-      run: cargo test --target x86_64-apple-darwin -- --nocapture
+    - name: Run tests
+      run: cargo test -- --nocapture

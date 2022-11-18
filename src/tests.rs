@@ -268,16 +268,6 @@ generate_target_tests! {
 		format_dylib: "lib{}.so",
 		format_staticlib: "lib{}.a",
 	},
-	{
-		target_os = "macos",
-		target_arch = "x86",
-		target_pointer_width = "32",
-		target_triple = "i686-apple-darwin",
-
-		format_executable: "{}",
-		format_dylib: "lib{}.dylib",
-		format_staticlib: "lib{}.a",
-	},
 
 	// ARM (64-bit)
 	{
@@ -330,16 +320,6 @@ generate_target_tests! {
 
 		format_executable: "{}",
 		format_dylib: "lib{}.so",
-		format_staticlib: "lib{}.a",
-	},
-	{
-		target_os = "macos",
-		target_arch = "arm",
-		target_pointer_width = "32",
-		target_triple = "armv7-apple-darwin",
-
-		format_executable: "{}",
-		format_dylib: "lib{}.dylib",
 		format_staticlib: "lib{}.a",
 	}
 }
